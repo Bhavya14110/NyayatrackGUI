@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NyayaTrack – Court Cases</title>
+  <script>
+    (function () {
+      let theme = null;
+      try { theme = localStorage.getItem('nyaya-theme'); } catch (e) {}
+      if (theme !== 'light' && theme !== 'dark') {
+        theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      }
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f4f6f9;
+      --card: #ffffff;
+      --text: #1f2933;
+      --muted: #6b7280;
+      --border: #d9dee5;
+      --input-bg: #ffffff;
+      --input-disabled: #eef0f3;
+      --disabled-text: #9aa1ab;
+      --header-bg: #172554;
+      --header-sub: #c7d2fe;
+      --th-bg: #eef2f7;
+      --row-hover: #f8fafc;
+      --primary: #1d4ed8;
+      --primary-dark: #1e40af;
+      --secondary-bg: #e5e7eb;
+      --edit-bg: #e0e7ff;
+      --edit-text: #1e40af;
+      --delete-bg: #fde2e2;
+      --danger: #c62828;
+      --success-bg: #e7f6ec;
+      --success-text: #1b6b35;
+      --error-bg: #fdecec;
+      --error-text: #a12020;
+      --highlight: #fff6cc;
+      --filter-bg: #f8fafc;
+    }
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #0f172a;
+      --card: #1e293b;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --border: #334155;
+      --input-bg: #0f172a;
+      --input-disabled: #1a2436;
+      --disabled-text: #64748b;
+      --header-bg: #020617;
+      --header-sub: #a5b4fc;
+      --th-bg: #273449;
+      --row-hover: #24324a;
+      --primary: #3b82f6;
+      --primary-dark: #2563eb;
+      --secondary-bg: #334155;
+      --edit-bg: #1e3a8a;
+      --edit-text: #c7d2fe;
+      --delete-bg: #4c1d1d;
+      --danger: #fca5a5;
+      --success-bg: #14532d;
+      --success-text: #bbf7d0;
+      --error-bg: #4c1d1d;
+      --error-text: #fecaca;
+      --highlight: #3f3a1a;
+      --filter-bg: #172033;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+    }
+    header {
+      background: var(--header-bg);
+      color: #fff;
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    header h1 { margin: 0; font-size: 22px; }
+    header p { margin: 4px 0 0; color: var(--header-sub); font-size: 13px; }
+    .theme-toggle {
+      background: rgba(255, 255, 255, 0.12);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    .theme-toggle:hover { background: rgba(255, 255, 255, 0.22); }
+    main { max-width: 1560px; margin: 0 auto; padding: 20px 16px 40px; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 18px 20px;
+      margin-bottom: 20px;
+    }
+    .card h2 { margin: 0 0 14px; font-size: 18px; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+      gap: 12px 16px;
+    }
+    label { display: block; font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+    label .hint { font-weight: 400; color: var(--muted); }
+    input, select {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      font-size: 14px;
+      font-family: inherit;
+      background: var(--input-bg);
+      color: var(--text);
+    }
+    input:disabled { background: var(--input-disabled); color: var(--disabled-text); }
+    select { cursor: pointer; }
+    .actions { margin-top: 16px; display: flex; gap: 10px; }
+    button {
+      border: none;
+      border-radius: 5px;
+      padding: 8px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-secondary { background: var(--secondary-bg); color: var(--text); }
+    .btn-edit { background: var(--edit-bg); color: var(--edit-text); padding: 5px 10px; font-size: 13px; }
+    .btn-delete { background: var(--delete-bg); color: var(--danger); padding: 5px 10px; font-size: 13px; }
+    .message { padding: 10px 14px; border-radius: 6px; margin-bottom: 16px; display: none; font-weight: 600; }
+    .message.success { display: block; background: var(--success-bg); color: var(--success-text); }
+    .message.error { display: block; background: var(--error-bg); color: var(--error-text); }
+
+    .filters {
+      background: var(--filter-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 14px 16px;
+      margin-bottom: 14px;
+    }
+    .filters .grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
+    .filters-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; gap: 10px; flex-wrap: wrap; }
+    .hidden { display: none; }
+
+    .table-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 12px; flex-wrap: wrap; }
+    .table-head h2 { margin: 0; }
+    .table-head input { width: 260px; }
+    .table-wrap { overflow-x: auto; max-height: 560px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px; }
+    table { border-collapse: collapse; width: 100%; white-space: nowrap; }
+    th, td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; }
+    th { background: var(--th-bg); position: sticky; top: 0; font-size: 13px; z-index: 1; }
+    tr:hover td { background: var(--row-hover); }
+    tr.highlight td { background: var(--highlight); }
+    .status { padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; background: rgba(100, 116, 139, 0.18); }
+    .status.st-Registered { background: rgba(59, 130, 246, 0.2); }
+    .status.st-Hearing { background: rgba(245, 158, 11, 0.24); }
+    .status.st-Disposed { background: rgba(34, 197, 94, 0.22); }
+    .status.st-Returned { background: rgba(239, 68, 68, 0.2); }
+    .status.st-Under-Appeal { background: rgba(168, 85, 247, 0.22); }
+    .num { text-align: right; }
+    .muted { color: var(--muted); }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.55);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 10;
+    }
+    .modal-backdrop.hidden { display: none; }
+    .modal {
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 22px 24px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+    }
+    .modal h3 { margin: 0 0 8px; font-size: 18px; }
+    .modal p { margin: 0; color: var(--muted); line-height: 1.5; }
+    .modal .actions { justify-content: flex-end; margin-top: 20px; }
+    .btn-danger { background: #c62828; color: #fff; }
+    .btn-danger:hover { background: #a61d1d; }
+    #formTitle.editing { color: var(--primary); }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>NyayaTrack – Court Case Management</h1>
+      <p>MC212 Lab 11 · Node.js + Express + PostgreSQL · CRUD on the COURT_CASE table</p>
+    </div>
+    <button type="button" class="theme-toggle" id="themeToggle">Dark mode</button>
+  </header>
+
+  <main>
+    <div id="message" class="message"></div>
+
+    <section class="card">
+      <h2 id="formTitle">Add new case</h2>
+      <form id="caseForm" novalidate>
+        <div class="grid">
+          <div>
+            <label for="caseType">Case type *</label>
+            <select id="caseType" required>
+              <option value="">-- select --</option>
+              <option>Civil</option><option>Criminal</option><option>Family</option>
+              <option>Commercial</option><option>Writ</option>
+            </select>
+          </div>
+          <div>
+            <label for="status">Status *</label>
+            <select id="status" required>
+              <option value="">-- select --</option>
+              <option>Filed</option><option>Returned</option><option>Registered</option>
+              <option>Hearing</option><option>Disposed</option><option>Under Appeal</option>
+            </select>
+          </div>
+          <div>
+            <label for="courtId">Court *</label>
+            <select id="courtId" required><option value="">Loading courts…</option></select>
+          </div>
+          <div>
+            <label for="filingDate">Filing date *</label>
+            <input type="date" id="filingDate" required>
+          </div>
+          <div>
+            <label for="cnr">CNR <span class="hint">(16 chars, registered only)</span></label>
+            <input type="text" id="cnr" maxlength="16" placeholder="e.g. DLHC010012342026">
+          </div>
+          <div>
+            <label for="registrationDate">Registration date <span class="hint">(registered only)</span></label>
+            <input type="date" id="registrationDate">
+          </div>
+          <div>
+            <label for="courtFeeDue">Court fee due (₹)</label>
+            <input type="number" id="courtFeeDue" min="0" step="0.01" value="0">
+          </div>
+          <div>
+            <label for="returnReason">Return reason <span class="hint">(Returned only)</span></label>
+            <input type="text" id="returnReason" maxlength="80">
+          </div>
+          <div>
+            <label for="originalCaseId">Original case ID <span class="hint">(appeals only)</span></label>
+            <input type="number" id="originalCaseId" min="1" placeholder="optional">
+          </div>
+        </div>
+        <div class="actions">
+          <button type="submit" class="btn-primary" id="submitBtn">Add case</button>
+          <button type="button" class="btn-secondary" id="cancelBtn" style="display:none">Cancel edit</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card">
+      <div class="table-head">
+        <h2>All cases <span id="count" class="muted"></span></h2>
+        <input type="search" id="filter" placeholder="Quick search in results…">
+      </div>
+
+      <div class="filters">
+        <div class="grid">
+          <div>
+            <label for="fType">Case type</label>
+            <select id="fType">
+              <option value="">All types</option>
+              <option>Civil</option><option>Criminal</option><option>Family</option>
+              <option>Commercial</option><option>Writ</option>
+            </select>
+          </div>
+          <div>
+            <label for="fStatus">Status</label>
+            <select id="fStatus">
+              <option value="">All statuses</option>
+              <option>Filed</option><option>Returned</option><option>Registered</option>
+              <option>Hearing</option><option>Disposed</option><option>Under Appeal</option>
+            </select>
+          </div>
+          <div>
+            <label for="fFee">Court fee</label>
+            <select id="fFee">
+              <option value="">Any fee</option>
+              <option value="due">Fee due (more than ₹0)</option>
+              <option value="none">No fee due (₹0)</option>
+            </select>
+          </div>
+          <div>
+            <label for="fDateField">Date to filter on</label>
+            <select id="fDateField">
+              <option value="filing">Filing date</option>
+              <option value="registration">Registration date</option>
+            </select>
+          </div>
+          <div>
+            <label for="fPeriod">Period</label>
+            <select id="fPeriod">
+              <option value="">Any time</option>
+              <option value="last30">Last 30 days</option>
+              <option value="last3m">Last 3 months</option>
+              <option value="last6m">Last 6 months</option>
+              <option value="last12m">Last 12 months</option>
+              <optgroup label="Calendar year" id="yearOptions"></optgroup>
+              <option value="custom">Custom range…</option>
+            </select>
+          </div>
+          <div class="custom-range hidden">
+            <label for="fFrom">From</label>
+            <input type="date" id="fFrom">
+          </div>
+          <div class="custom-range hidden">
+            <label for="fTo">To</label>
+            <input type="date" id="fTo">
+          </div>
+        </div>
+        <div class="filters-foot">
+          <span id="filterSummary" class="muted">No filters applied</span>
+          <button type="button" class="btn-secondary" id="resetFilters">Reset filters</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Case ID</th><th>CNR</th><th>Type</th><th>Filing date</th><th>Reg. date</th>
+              <th>Status</th><th class="num">Fee due (₹)</th><th>Return reason</th>
+              <th>Court</th><th>Orig. case</th><th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="caseRows"><tr><td colspan="11" class="muted">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <div id="confirmModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <div class="modal">
+      <h3 id="confirmTitle">Delete case?</h3>
+      <p id="confirmText"></p>
+      <div class="actions">
+        <button type="button" class="btn-secondary" id="confirmNo">Cancel</button>
+        <button type="button" class="btn-danger" id="confirmYes">Yes, delete</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('caseForm');
+    const fields = ['caseType', 'status', 'courtId', 'filingDate', 'cnr', 'registrationDate',
+                    'courtFeeDue', 'returnReason', 'originalCaseId'];
+    const $ = (id) => document.getElementById(id);
+    let allCases = [];
+    let editingId = null;
+    let highlightId = null;
+    let yearsLoaded = false;
+
+    function updateThemeButton() {
+      const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+      $('themeToggle').textContent = dark ? '☀ Light mode' : '☾ Dark mode';
+    }
+    $('themeToggle').addEventListener('click', () => {
+      const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      try { localStorage.setItem('nyaya-theme', next); } catch (e) {}
+      updateThemeButton();
+    });
+    updateThemeButton();
+
+    function showMessage(text, type) {
+      const box = $('message');
+      box.textContent = text;
+      box.className = 'message ' + type;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function escapeHtml(v) {
+      if (v === null || v === undefined) return '';
+      return String(v).replace(/[&<>"']/g, (c) =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    function applyStatusRules() {
+      const status = $('status').value;
+      const registered = status !== '' && status !== 'Filed' && status !== 'Returned';
+      $('cnr').disabled = !registered;
+      $('registrationDate').disabled = !registered;
+      $('returnReason').disabled = status !== 'Returned';
+      if (!registered) { $('cnr').value = ''; $('registrationDate').value = ''; }
+      if (status !== 'Returned') $('returnReason').value = '';
+    }
+    $('status').addEventListener('change', applyStatusRules);
+
+    function isoDate(d) {
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    }
+
+    function periodRange() {
+      const p = $('fPeriod').value;
+      const today = new Date();
+      const back = (months, days = 0) => {
+        const d = new Date(today);
+        d.setMonth(d.getMonth() - months);
+        d.setDate(d.getDate() - days);
+        return isoDate(d);
+      };
+      if (p === 'last30') return { from: back(0, 30), to: isoDate(today) };
+      if (p === 'last3m') return { from: back(3), to: isoDate(today) };
+      if (p === 'last6m') return { from: back(6), to: isoDate(today) };
+      if (p === 'last12m') return { from: back(12), to: isoDate(today) };
+      if (/^year\d{4}$/.test(p)) { const y = p.slice(4); return { from: `${y}-01-01`, to: `${y}-12-31` }; }
+      if (p === 'custom') return { from: $('fFrom').value, to: $('fTo').value };
+      return { from: '', to: '' };
+    }
+
+    function filterParams() {
+      const { from, to } = periodRange();
+      const params = new URLSearchParams();
+      if ($('fType').value) params.set('type', $('fType').value);
+      if ($('fStatus').value) params.set('status', $('fStatus').value);
+      if ($('fFee').value) params.set('fee', $('fFee').value);
+      if (from || to) {
+        params.set('dateField', $('fDateField').value);
+        if (from) params.set('from', from);
+        if (to) params.set('to', to);
+      }
+      return params;
+    }
+
+    function updateFilterSummary() {
+      const parts = [];
+      const selText = (id) => $(id).options[$(id).selectedIndex].text;
+      if ($('fType').value) parts.push(selText('fType'));
+      if ($('fStatus').value) parts.push(selText('fStatus'));
+      if ($('fFee').value) parts.push(selText('fFee'));
+      const { from, to } = periodRange();
+      if (from || to) {
+        const field = $('fDateField').value === 'registration' ? 'Registered' : 'Filed';
+        parts.push(`${field} ${from ? 'from ' + from : ''}${from && to ? ' ' : ''}${to ? 'to ' + to : ''}`);
+      }
+      $('filterSummary').textContent = parts.length
+        ? `${parts.length} filter${parts.length > 1 ? 's' : ''}: ${parts.join(' · ')}`
+        : 'No filters applied';
+    }
+
+    function onFilterChange() {
+      document.querySelectorAll('.custom-range').forEach((el) =>
+        el.classList.toggle('hidden', $('fPeriod').value !== 'custom'));
+      updateFilterSummary();
+      loadCases();
+    }
+    ['fType', 'fStatus', 'fFee', 'fDateField', 'fPeriod', 'fFrom', 'fTo'].forEach((id) =>
+      $(id).addEventListener('change', onFilterChange));
+
+    $('resetFilters').addEventListener('click', () => {
+      ['fType', 'fStatus', 'fFee', 'fPeriod', 'fFrom', 'fTo'].forEach((id) => { $(id).value = ''; });
+      $('fDateField').value = 'filing';
+      $('filter').value = '';
+      onFilterChange();
+    });
+
+    function fillYearOptions(cases) {
+      const years = new Set();
+      cases.forEach((c) => {
+        if (c.filingdate) years.add(c.filingdate.slice(0, 4));
+        if (c.registrationdate) years.add(c.registrationdate.slice(0, 4));
+      });
+      $('yearOptions').innerHTML = [...years].sort().reverse()
+        .map((y) => `<option value="year${y}">${y}</option>`).join('');
+      yearsLoaded = true;
+    }
+
+    async function loadCourts() {
+      try {
+        const res = await fetch('/api/courts');
+        const courts = await res.json();
+        if (!res.ok) throw new Error(courts.error);
+        $('courtId').innerHTML = '<option value="">-- select --</option>' + courts.map((c) =>
+          `<option value="${c.courtid}">${c.courtid} – ${escapeHtml(c.courtname)}</option>`).join('');
+      } catch (err) {
+        $('courtId').innerHTML = '<option value="">Could not load courts</option>';
+        showMessage('Could not load courts: ' + err.message, 'error');
+      }
+    }
+
+    async function loadCases() {
+      const params = filterParams();
+      try {
+        const res = await fetch('/api/cases' + (params.toString() ? '?' + params : ''));
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        allCases = data;
+        if (!yearsLoaded && params.toString() === '') fillYearOptions(data);
+        renderTable();
+      } catch (err) {
+        allCases = [];
+        $('caseRows').innerHTML = '<tr><td colspan="11" class="muted">Could not load cases.</td></tr>';
+        $('count').textContent = '';
+        showMessage('Could not load cases: ' + err.message, 'error');
+      }
+    }
+
+    function renderTable() {
+      const q = $('filter').value.trim().toLowerCase();
+      const rows = q ? allCases.filter((c) =>
+        [c.caseid, c.cnr, c.casetype, c.status, c.courtname, c.filingdate]
+          .some((v) => String(v ?? '').toLowerCase().includes(q))) : allCases;
+      $('count').textContent = `(${rows.length}${q ? ' of ' + allCases.length : ''})`;
+      if (rows.length === 0) {
+        $('caseRows').innerHTML = '<tr><td colspan="11" class="muted">No cases match the selected filters.</td></tr>';
+        return;
+      }
+      $('caseRows').innerHTML = rows.map((c) => `
+        <tr class="${c.caseid === highlightId ? 'highlight' : ''}">
+          <td><strong>${c.caseid}</strong></td>
+          <td>${escapeHtml(c.cnr) || '<span class="muted">—</span>'}</td>
+          <td>${escapeHtml(c.casetype)}</td>
+          <td>${escapeHtml(c.filingdate)}</td>
+          <td>${escapeHtml(c.registrationdate) || '<span class="muted">—</span>'}</td>
+          <td><span class="status st-${escapeHtml(c.status).replace(' ', '-')}">${escapeHtml(c.status)}</span></td>
+          <td class="num">${Number(c.courtfeedue).toFixed(2)}</td>
+          <td>${escapeHtml(c.returnreason) || '<span class="muted">—</span>'}</td>
+          <td>${c.courtid} – ${escapeHtml(c.courtname)}</td>
+          <td>${c.originalcaseid ?? '<span class="muted">—</span>'}</td>
+          <td>
+            <button class="btn-edit" onclick="startEdit(${c.caseid})">Edit</button>
+            <button class="btn-delete" onclick="deleteCase(${c.caseid})">Delete</button>
+          </td>
+        </tr>`).join('');
+    }
+    $('filter').addEventListener('input', renderTable);
+
+    function readForm() {
+      const body = {};
+      fields.forEach((f) => { body[f] = $(f).disabled ? '' : $(f).value.trim(); });
+      return body;
+    }
+
+    function resetForm() {
+      form.reset();
+      $('courtFeeDue').value = '0';
+      editingId = null;
+      $('formTitle').textContent = 'Add new case';
+      $('formTitle').classList.remove('editing');
+      $('submitBtn').textContent = 'Add case';
+      $('cancelBtn').style.display = 'none';
+      applyStatusRules();
+    }
+
+    function startEdit(id) {
+      const c = allCases.find((x) => x.caseid === id);
+      if (!c) return;
+      editingId = id;
+      $('caseType').value = c.casetype;
+      $('status').value = c.status;
+      $('courtId').value = String(c.courtid);
+      $('filingDate').value = c.filingdate;
+      applyStatusRules();
+      $('cnr').value = c.cnr ?? '';
+      $('registrationDate').value = c.registrationdate ?? '';
+      $('courtFeeDue').value = c.courtfeedue;
+      $('returnReason').value = c.returnreason ?? '';
+      $('originalCaseId').value = c.originalcaseid ?? '';
+      $('formTitle').textContent = `Edit case #${id}`;
+      $('formTitle').classList.add('editing');
+      $('submitBtn').textContent = 'Save changes';
+      $('cancelBtn').style.display = 'inline-block';
+      $('message').className = 'message';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    $('cancelBtn').addEventListener('click', resetForm);
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const body = readForm();
+      if (!body.caseType || !body.status || !body.courtId || !body.filingDate) {
+        showMessage('Please fill in Case type, Status, Court and Filing date.', 'error');
+        return;
+      }
+      const url = editingId ? `/api/cases/${editingId}` : '/api/cases';
+      const method = editingId ? 'PUT' : 'POST';
+      try {
+        const res = await fetch(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        highlightId = data.case.caseid;
+        showMessage(data.message, 'success');
+        resetForm();
+        await loadCases();
+      } catch (err) {
+        showMessage(err.message, 'error');
+      }
+    });
+
+    function askConfirm(text) {
+      return new Promise((resolve) => {
+        const modal = $('confirmModal');
+        $('confirmText').textContent = text;
+        modal.classList.remove('hidden');
+        $('confirmNo').focus();
+        const close = (answer) => {
+          modal.classList.add('hidden');
+          $('confirmYes').onclick = $('confirmNo').onclick = modal.onclick = document.onkeydown = null;
+          resolve(answer);
+        };
+        $('confirmYes').onclick = () => close(true);
+        $('confirmNo').onclick = () => close(false);
+        modal.onclick = (e) => { if (e.target === modal) close(false); };
+        document.onkeydown = (e) => { if (e.key === 'Escape') close(false); };
+      });
+    }
+
+    async function deleteCase(id) {
+      const c = allCases.find((x) => x.caseid === id);
+      const what = c ? `${c.casetype} case #${id}${c.cnr ? ' (CNR ' + c.cnr + ')' : ''}` : `case #${id}`;
+      if (!(await askConfirm(`Are you sure you want to delete ${what}? This permanently removes the row from the COURT_CASE table and cannot be undone.`))) return;
+      try {
+        const res = await fetch(`/api/cases/${id}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        if (editingId === id) resetForm();
+        showMessage(data.message, 'success');
+        await loadCases();
+      } catch (err) {
+        showMessage(`Could not delete case #${id}: ${err.message}`, 'error');
+      }
+    }
+
+    applyStatusRules();
+    loadCourts().then(loadCases);
+  </script>
+</body>
+</html>
