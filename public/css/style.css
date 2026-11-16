@@ -211,6 +211,7 @@ button {
 .table-head input { width: 260px; }
 .table-wrap { overflow-x: auto; max-height: 560px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px; }
 .table-wrap.short { max-height: 360px; }
+#cdBody .table-wrap, #rsNotify .table-wrap, #tfHistory .table-wrap { max-height: none; }
 table { border-collapse: collapse; width: 100%; white-space: nowrap; }
 th, td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
 th { background: var(--th-bg); position: sticky; top: 0; font-size: 13px; z-index: 1; }
@@ -236,6 +237,18 @@ td.drill { cursor: pointer; color: var(--primary); font-weight: 600; text-decora
 .portal-card h3 { margin: 0 0 4px; font-size: 16px; }
 .portal-card .big { font-size: 15px; font-weight: 600; margin: 10px 0 4px; }
 .portal-card p { margin: 4px 0; line-height: 1.5; }
+
+.stat-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+.stat { border: 1px solid var(--border); border-radius: 8px; padding: 16px 18px; background: var(--filter-bg); }
+.stat .value { font-size: 32px; font-weight: 700; color: var(--primary); line-height: 1.1; }
+.stat .label { color: var(--muted); font-size: 13px; margin-top: 4px; }
+.bars { display: grid; gap: 8px; }
+.bar-row { display: grid; grid-template-columns: 140px 1fr 60px; gap: 12px; align-items: center; }
+.bar-track { background: var(--secondary-bg); border-radius: 4px; height: 18px; overflow: hidden; }
+.bar-fill { background: var(--primary); height: 100%; border-radius: 4px; }
+.bar-fill.thin { height: 12px; }
+.badge-warn { display: inline-block; background: #c62828; color: #fff; border-radius: 10px; padding: 1px 8px; font-size: 12px; font-weight: 700; margin-left: 4px; }
+.section-title { margin: 22px 0 8px; font-size: 15px; }
 
 .modal-backdrop {
   position: fixed;

@@ -9,7 +9,7 @@ async function loadLitigant() {
     const d = await api('/api/portal/litigant');
     $('lCases').innerHTML = d.cases.length ? d.cases.map((c) => `
       <div class="portal-card">
-        <h3>Case ${escapeHtml(c.case_number)}</h3>
+        <h3>${c.case_number === 'Not yet registered' ? 'Filing (not yet registered)' : 'Case ' + escapeHtml(c.case_number)}</h3>
         <p class="big">${escapeHtml(c.what_is_happening)}</p>
         <p><strong>Where it stands:</strong> ${escapeHtml(c.current_step)}</p>
         <p><strong>Next hearing:</strong> ${c.next_hearing_date

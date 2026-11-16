@@ -31,8 +31,14 @@
   </header>
   <nav class="tabs" id="tabs">
     <button type="button" data-view="cases">Cases</button>
-    <button type="button" data-view="causelist">Cause list</button>
+    <button type="button" data-view="dashboard">Dashboard</button>
     <button type="button" data-view="search">Search</button>
+    <button type="button" data-view="details">Case details</button>
+    <button type="button" data-view="causelist">Cause list</button>
+    <button type="button" data-view="reschedule">Reschedule</button>
+    <button type="button" data-view="transfer">Transfer</button>
+    <button type="button" data-view="audit">Audit trail</button>
+    <button type="button" data-view="lview">Litigant view</button>
     <button type="button" data-view="reports">Reports</button>
     <button type="button" data-view="notifications">Notifications</button>
     <button type="button" data-view="advocate">My cases</button>
@@ -260,8 +266,9 @@
     <div class="view hidden" id="view-causelist">
       <section class="card">
         <h2>Daily cause list <span class="muted" id="clCourt"></span></h2>
-        <p class="lead">Urgent and liberty matters are called first, then the rest by time (FR-12, FR-20). The list is built from the hearings on record, so it changes the moment a hearing is fixed or moved.</p>
+        <p class="lead">Urgent and liberty matters are called first, then the rest by time (FR-12, FR-20). The list is built from the hearings on record, so it changes the moment a hearing is fixed or moved. Cause lists are public; a hearing can be rescheduled only by the staff of its own court.</p>
         <div class="inline-form no-print">
+          <div class="wide"><label for="clCourtSel">Court</label><select id="clCourtSel"></select></div>
           <div><label for="clDate">Date</label><input type="date" id="clDate"></div>
           <div><button type="button" class="btn-primary" id="clLoad">Show cause list</button></div>
           <div><button type="button" class="btn-secondary" id="clPrint">Print</button></div>
@@ -269,10 +276,113 @@
         <p class="note" id="clInfo"></p>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Sr.</th><th>Time</th><th>Venue</th><th>Case</th><th>Type</th><th>Priority</th><th>Stage</th><th>Parties</th><th>Judge</th><th>Outcome</th></tr></thead>
-            <tbody id="clRows"><tr><td colspan="10" class="muted">Choose a date.</td></tr></tbody>
+            <thead><tr><th>Sr.</th><th>Time</th><th>CNR</th><th>Type</th><th>Judge</th><th>Courtroom</th><th>Priority</th><th>Stage</th><th>Parties</th><th>Outcome</th><th class="no-print"></th></tr></thead>
+            <tbody id="clRows"><tr><td colspan="11" class="muted">Choose a court and a date.</td></tr></tbody>
           </table>
         </div>
+      </section>
+    </div>
+
+    <div class="view hidden" id="view-dashboard">
+      <section class="card">
+        <h2>Dashboard</h2>
+        <p class="lead">All courts in NyayaTrack. Aggregate figures only, with no names or case details, like the national NJDG pendency figures (FR-06).</p>
+        <div class="stat-cards" id="dTotals"></div>
+      </section>
+      <section class="card">
+        <h2>Pending cases by type and age</h2>
+        <p class="lead">Pending means Registered or Hearing (view <code>v_pending_cases</code>); age is counted from the filing date.</p>
+        <div class="table-wrap short">
+          <table>
+            <thead><tr><th>Case type</th><th class="num">Up to 1 year</th><th class="num">1–3 years</th><th class="num">Over 3 years</th><th class="num">Total</th><th style="width:40%">Share of pending cases</th></tr></thead>
+            <tbody id="dPending"></tbody>
+          </table>
+        </div>
+      </section>
+      <section class="card">
+        <h2>Cases by status</h2>
+        <div class="bars" id="dStatus"></div>
+      </section>
+    </div>
+
+    <div class="view hidden" id="view-details">
+      <section class="card">
+        <h2>Case details</h2>
+        <form class="inline-form no-print" id="cdForm" novalidate>
+          <div><label for="cdCase">Case ID</label><input type="number" id="cdCase" min="1"></div>
+          <div><button type="submit" class="btn-primary">Show case</button></div>
+        </form>
+        <div id="cdBody"><p class="note">Enter a case ID of your court, or open a case from Search or the cause list.</p></div>
+      </section>
+    </div>
+
+    <div class="view hidden" id="view-reschedule">
+      <section class="card">
+        <h2>Reschedule a hearing</h2>
+        <p class="lead">Only a hearing that has not been held yet (outcome Listed) can be moved. The database refuses a courtroom or judge that is already booked at that time (FR-28), updates the cause list, and queues a notification for every party and advocate (FR-05a, FR-12).</p>
+        <form class="inline-form no-print" id="rsLoadForm" novalidate>
+          <div><label for="rsHearing">Hearing ID</label><input type="number" id="rsHearing" min="1"></div>
+          <div><button type="submit" class="btn-secondary">Load hearing</button></div>
+        </form>
+        <div id="rsCurrent"></div>
+        <div class="box hidden" id="rsBox">
+          <h4>New date and time</h4>
+          <div class="inline-form">
+            <div><label for="rsDate">New date</label><input type="date" id="rsDate"></div>
+            <div><label for="rsStart">Starts</label><input type="time" id="rsStart"></div>
+            <div><label for="rsEnd">Ends</label><input type="time" id="rsEnd"></div>
+            <div><label for="rsRoom">Courtroom</label><select id="rsRoom"></select></div>
+            <div><button type="button" class="btn-primary" id="rsGo">Reschedule</button></div>
+          </div>
+        </div>
+        <div id="rsNotify"></div>
+      </section>
+    </div>
+
+    <div class="view hidden" id="view-transfer">
+      <section class="card">
+        <h2>Transfer a case</h2>
+        <p class="lead">Hand a Registered or Hearing case over to another judge (FR-09). The stored procedure <code>sp_transfer_case</code> closes the current assignment, opens the new one with your handover note (FR-22) and moves the coming hearings to the new judge.</p>
+        <div class="inline-form">
+          <div class="wide"><label for="tfCase">Case</label><select id="tfCase"></select></div>
+          <div><label for="tfType">Type</label><select id="tfType"><option>Transfer</option><option>Roster</option></select></div>
+          <div class="wide"><label for="tfJudge">New judge</label><select id="tfJudge"></select></div>
+          <div><label for="tfDate">From</label><input type="date" id="tfDate"></div>
+          <div class="full"><label for="tfNote">Handover note</label><textarea id="tfNote" maxlength="1000"></textarea></div>
+          <div><button type="button" class="btn-primary" id="tfGo">Transfer case</button></div>
+        </div>
+        <div id="tfHistory"></div>
+      </section>
+    </div>
+
+    <div class="view hidden" id="view-audit">
+      <section class="card">
+        <h2>Audit trail</h2>
+        <p class="lead">Every change to a case, newest first, from the append-only audit log (view <code>v_case_timeline</code>): who made it, when, and only the fields that changed (FR-23, FR-24, FR-25).</p>
+        <form class="inline-form no-print" id="auForm" novalidate>
+          <div><label for="auCase">Case ID</label><input type="number" id="auCase" min="1"></div>
+          <div><button type="submit" class="btn-primary">Show audit trail</button></div>
+        </form>
+        <p class="note" id="auInfo"></p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>When</th><th>Table</th><th>Action</th><th>Changed by</th><th>What changed (old → new)</th></tr></thead>
+            <tbody id="auRows"><tr><td colspan="5" class="muted">Enter a case ID.</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <div class="view hidden" id="view-lview">
+      <section class="card">
+        <h2>Litigant view</h2>
+        <p class="lead">This is exactly what the litigant portal shows a party (FR-07, FR-29, NFR-04). The request runs as the database role <code>nyaya_litigant</code> with <code>nyaya.personid</code> set to the party, so the database itself limits it to that person's own cases (NFR-02).</p>
+        <form class="inline-form no-print" id="lvForm" novalidate>
+          <div class="wide"><label for="lvPerson">Party</label><select id="lvPerson"></select></div>
+          <div><button type="submit" class="btn-primary">Show their view</button></div>
+        </form>
+        <h3 id="lvTitle"></h3>
+        <div class="portal-cards" id="lvCards"></div>
       </section>
     </div>
 
@@ -475,6 +585,7 @@
   <script src="js/casefile.js"></script>
   <script src="js/registry.js"></script>
   <script src="js/portals.js"></script>
+  <script src="js/tabs.js"></script>
   <script>start();</script>
 </body>
 </html>

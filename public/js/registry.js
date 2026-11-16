@@ -1,18 +1,32 @@
 const priorityHtml = (p) => (p === 'Normal' ? '<span class="muted">Normal</span>' : `<span class="prio pr-${escapeHtml(p)}">${escapeHtml(p)}</span>`);
-const caseLink = (id, cnr) => `<a href="#" onclick="openCase(${id}); return false;">${escapeHtml(cnr || 'Case #' + id)}</a>`;
+const caseLink = (id, cnr) => `<a href="#" onclick="openDetails(${id}); return false;">${escapeHtml(cnr || 'Case #' + id)}</a>`;
+
+async function fillCourtSelect(select) {
+  if (!select.options.length) {
+    const courts = await fetch('/api/courts').then((r) => r.json());
+    select.innerHTML = courts.map((c) => `<option value="${c.courtid}">${c.courtid} – ${escapeHtml(c.courtname)}</option>`).join('');
+  }
+}
 
 async function loadCauseList() {
   if (!$('clDate').value) $('clDate').value = todayIso();
   try {
-    const d = await api(`/api/causelist?date=${encodeURIComponent($('clDate').value)}`);
+    await fillCourtSelect($('clCourtSel'));
+    if (!$('clCourtSel').dataset.touched && me.courtid) $('clCourtSel').value = String(me.courtid);
+    const d = await api(`/api/causelist?court=${encodeURIComponent($('clCourtSel').value)}&date=${encodeURIComponent($('clDate').value)}`);
     $('clCourt').textContent = '· ' + d.court;
-    $('clInfo').textContent = `${d.rows.length} matter${d.rows.length === 1 ? '' : 's'} listed for ${d.date}. List generated in ${d.ms.toFixed(1)} ms (NFR-03).`;
+    $('clInfo').textContent = `${d.rows.length} matter${d.rows.length === 1 ? '' : 's'} listed for ${d.date}, urgent and liberty matters first. List generated in ${d.ms.toFixed(1)} ms (NFR-03).`;
+    const ownCourt = isStaff() && Number(d.courtid) === Number(me.courtid);
     $('clRows').innerHTML = d.rows.length ? d.rows.map((r) => `
       <tr><td>${r.sr_no}</td><td>${fmtTime(r.hearingtime)}–${fmtTime(r.endtime)}</td>
-        <td>${r.mode === 'Video Conference' ? `Video Conference<br><span class="muted">${escapeHtml(r.vclink)}</span>` : escapeHtml(r.venue)}</td>
-        <td>${caseLink(r.caseid, r.cnr)}</td><td>${escapeHtml(r.casetype)}</td><td>${priorityHtml(r.priority)}</td>
-        <td>${cell(r.stage)}</td><td class="wrap">${cell(r.parties)}</td><td>${escapeHtml(r.judge)}</td><td>${escapeHtml(r.outcome)}</td></tr>`).join('')
-      : emptyRow(10, 'No hearings are listed in your court on this date.');
+        <td>${ownCourt || isJudge() ? caseLink(r.caseid, r.cnr) : escapeHtml(r.cnr || 'Case #' + r.caseid)}</td><td>${escapeHtml(r.casetype)}</td>
+        <td>${escapeHtml(r.judge)}</td>
+        <td>${r.mode === 'Video Conference' ? 'Video Conference' : 'Court Room ' + escapeHtml(r.courtroomnumber)}</td>
+        <td>${priorityHtml(r.priority)}</td><td>${cell(r.stage)}</td><td class="wrap">${cell(r.parties)}</td><td>${escapeHtml(r.outcome)}</td>
+        <td class="no-print">${ownCourt && r.outcome === 'Listed'
+          ? `<button class="btn-edit" onclick="openReschedule(${r.hearingid})">Reschedule</button>`
+          : `<button class="btn-secondary btn-small" disabled title="${ownCourt ? 'Already held' : 'Only the staff of this court can reschedule'}">Reschedule</button>`}</td></tr>`).join('')
+      : emptyRow(11, 'No hearings are listed in this court on this date.');
   } catch (err) {
     showMessage(err.message, 'error');
   }
@@ -20,6 +34,7 @@ async function loadCauseList() {
 VIEW_LOADERS.causelist = loadCauseList;
 $('clLoad').addEventListener('click', loadCauseList);
 $('clDate').addEventListener('change', loadCauseList);
+$('clCourtSel').addEventListener('change', () => { $('clCourtSel').dataset.touched = '1'; loadCauseList(); });
 $('clPrint').addEventListener('click', () => window.print());
 
 $('searchForm').addEventListener('submit', async (e) => {
@@ -33,7 +48,7 @@ $('searchForm').addEventListener('submit', async (e) => {
     $('sRows').innerHTML = d.rows.length ? d.rows.map((r) => `
       <tr><td>${r.caseid}</td><td>${cell(r.cnr)}</td><td>${escapeHtml(r.casetype)}</td><td>${escapeHtml(r.status)}</td>
         <td>${cell(r.stage)}</td><td>${escapeHtml(r.court)}</td><td>${escapeHtml(r.filingdate)}</td><td>${cell(r.legacyref)}</td>
-        <td><button class="btn-edit" onclick="openCase(${r.caseid})">Open</button></td></tr>`).join('')
+        <td><button class="btn-edit" onclick="openDetails(${r.caseid})">Case details</button></td></tr>`).join('')
       : emptyRow(9, 'No case matches.');
   } catch (err) {
     showMessage(err.message, 'error');

@@ -1,14 +1,59 @@
 const express = require('express');
+const pool = require('../db');
 const { CASE_TYPES, isValidDate, toPositiveInt, emptyToNull } = require('../lib/validate');
 const { userError, sendDbError } = require('../lib/errors');
-const { STAFF, COURT_USERS, withSession, signedIn, asNotifier, by } = require('../lib/session');
+const { STAFF, COURT_USERS, withSession, signedIn, asNotifier, asLitigant, by } = require('../lib/session');
+const { sent, maskPhone, smsText, keyOf, toNotification } = require('../lib/notify');
 
 const router = express.Router();
+
+async function courtUser(req) {
+  const me = await signedIn(req);
+  if (!COURT_USERS.includes(me.approle)) throw userError(`Signed in as ${me.approle}: this is not part of your role (role-based access, FR-27).`, 403);
+  return me;
+}
+
+const DASH_TOTALS_SQL = `
+  SELECT (SELECT COUNT(*) FROM court_case) AS all_cases,
+         (SELECT COUNT(*) FROM v_pending_cases) AS pending_cases,
+         (SELECT COUNT(DISTINCT caseid) FROM hearing
+           WHERE hearingdate BETWEEN date_trunc('month', CURRENT_DATE)::date AND CURRENT_DATE
+             AND outcome <> 'Listed') AS heard_this_month,
+         (SELECT COUNT(*) FROM hearing WHERE hearingdate = CURRENT_DATE) AS hearings_today`;
+
+const DASH_PENDING_SQL = `
+  SELECT casetype,
+         COUNT(*) FILTER (WHERE age_days <= 365)               AS upto_1y,
+         COUNT(*) FILTER (WHERE age_days BETWEEN 366 AND 1095) AS y1_to_3,
+         COUNT(*) FILTER (WHERE age_days > 1095)               AS over_3y,
+         COUNT(*) AS total
+    FROM v_pending_cases
+   GROUP BY casetype
+   ORDER BY total DESC, casetype`;
+
+const DASH_STATUS_SQL = `
+  SELECT status, COUNT(*) AS cases
+    FROM court_case
+   GROUP BY status
+   ORDER BY cases DESC`;
+
+router.get('/dashboard', async (req, res) => {
+  try {
+    await courtUser(req);
+    const totals = (await pool.query(DASH_TOTALS_SQL)).rows[0];
+    const pending = (await pool.query(DASH_PENDING_SQL)).rows;
+    const status = (await pool.query(DASH_STATUS_SQL)).rows;
+    console.log(`[DASHBOARD] ${totals.all_cases} cases, ${totals.pending_cases} pending -> result.rowCount = ${pending.length + status.length}`);
+    res.json({ totals, pending, status });
+  } catch (err) {
+    sendDbError(res, err, 'DASHBOARD');
+  }
+});
 
 const CAUSE_LIST_SQL = `
   SELECT ROW_NUMBER() OVER (ORDER BY CASE cc.priority WHEN 'Urgent' THEN 1 WHEN 'Liberty' THEN 2 ELSE 3 END,
                                      h.hearingtime) AS sr_no,
-         h.hearingid, h.hearingtime, h.endtime, h.mode, h.vclink, h.outcome,
+         h.hearingid, h.courtid, h.hearingtime, h.endtime, h.mode, h.vclink, h.outcome, h.courtroomnumber,
          COALESCE('Court Room ' || h.courtroomnumber, 'Video Conference') AS venue,
          jp.name AS judge, cc.caseid, cc.cnr, cc.casetype, cc.priority, cc.stage,
          (SELECT STRING_AGG(p.name || ' (' || i.partyrole || ')', ', ' ORDER BY i.partyrole)
@@ -25,18 +70,23 @@ router.get('/causelist', async (req, res) => {
   if (!isValidDate(date)) return res.status(400).json({ error: 'Choose the date of the cause list.' });
 
   try {
-    const data = await withSession(req, COURT_USERS, async (client, me) => {
-      const started = process.hrtime.bigint();
-      const rows = (await client.query(CAUSE_LIST_SQL, [date, me.courtid])).rows;
-      const ms = Number(process.hrtime.bigint() - started) / 1e6;
-      console.log(`[CAUSELIST] ${me.courtname} ${date} -> result.rowCount = ${rows.length} (${ms.toFixed(1)} ms)`);
-      return { court: me.courtname, date, rows, ms };
-    });
-    res.json(data);
+    const me = await courtUser(req);
+    const court = toPositiveInt(req.query.court) || me.courtid;
+    const courtRow = (await pool.query('SELECT courtname FROM court WHERE courtid = $1', [court])).rows[0];
+    if (!courtRow) throw userError('That court does not exist.', 404);
+    const started = process.hrtime.bigint();
+    const rows = (await pool.query(CAUSE_LIST_SQL, [date, court])).rows;
+    const ms = Number(process.hrtime.bigint() - started) / 1e6;
+    console.log(`[CAUSELIST] ${courtRow.courtname} ${date} -> result.rowCount = ${rows.length} (${ms.toFixed(1)} ms)`);
+    res.json({ courtid: court, court: courtRow.courtname, date, rows, ms });
   } catch (err) {
     sendDbError(res, err, 'CAUSELIST');
   }
 });
+
+const SEARCH_SQL = `
+  SELECT * FROM fn_search_cases(p_cnr => $1::text, p_party => $2::text, p_advocate => $3::text,
+                                p_from => $4::date, p_to => $5::date, p_legacy => $6::text)`;
 
 router.get('/search', async (req, res) => {
   const cnr = emptyToNull(req.query.cnr) && emptyToNull(req.query.cnr).toUpperCase();
@@ -55,9 +105,7 @@ router.get('/search', async (req, res) => {
   try {
     const data = await withSession(req, COURT_USERS, async (client, me) => {
       const started = process.hrtime.bigint();
-      const rows = (await client.query(
-        'SELECT * FROM fn_search_cases($1::text, $2::text, $3::text, $4::date, $5::date, $6::text)',
-        [cnr, party, advocate, from, to, legacy])).rows;
+      const rows = (await client.query(SEARCH_SQL, [cnr, party, advocate, from, to, legacy])).rows;
       const ms = Number(process.hrtime.bigint() - started) / 1e6;
       console.log(`[SEARCH] fn_search_cases -> result.rowCount = ${rows.length} (${ms.toFixed(1)} ms) ${by(me)}`);
       return { rows, ms };
@@ -137,36 +185,13 @@ router.get('/reports/pending', async (req, res) => {
   }
 });
 
-const sent = new Map();
-
-function maskPhone(p) {
-  return p ? `${p.slice(0, 2)}XXXXXX${p.slice(-2)}` : '';
-}
-
-function fmtTime(t) {
-  return t ? String(t).slice(0, 5) : '';
-}
-
-function smsText(r) {
-  return `NyayaTrack: your hearing in case ${r.cnr || '(not registered)'} at ${r.courtname} has moved from `
-    + `${r.olddate} ${fmtTime(r.oldtime)} to ${r.newdate} ${fmtTime(r.newtime)}. Venue: ${r.venue}.`;
-}
-
 router.get('/notifications', async (req, res) => {
   try {
     const me = await signedIn(req);
     if (!STAFF.includes(me.approle)) throw userError('Only registry staff run the notification service (FR-27).', 403);
     const rows = await asNotifier(async (client) =>
       (await client.query('SELECT * FROM v_notification_queue ORDER BY changedat DESC, audience, name')).rows);
-    res.json(rows.map((r) => {
-      const key = `${r.logid}:${r.personid}:${r.audience}`;
-      return {
-        key, logid: r.logid, changedat: r.changedat, cnr: r.cnr, courtname: r.courtname, name: r.name,
-        audience: r.audience, phone: maskPhone(r.contactnumber), mode: r.mode, venue: r.venue,
-        olddate: r.olddate, oldtime: fmtTime(r.oldtime), newdate: r.newdate, newtime: fmtTime(r.newtime),
-        message: smsText(r), sentAt: sent.get(key) || null,
-      };
-    }));
+    res.json(rows.map(toNotification));
   } catch (err) {
     sendDbError(res, err, 'NOTIFY');
   }
@@ -183,7 +208,7 @@ router.post('/notifications/send', async (req, res) => {
       (await client.query('SELECT * FROM v_notification_queue')).rows);
     let count = 0;
     for (const r of rows) {
-      const key = `${r.logid}:${r.personid}:${r.audience}`;
+      const key = keyOf(r);
       if (!keys.includes(key) || sent.has(key)) continue;
       sent.set(key, new Date().toISOString());
       count++;
@@ -192,6 +217,25 @@ router.post('/notifications/send', async (req, res) => {
     res.json({ message: `${count} notification${count === 1 ? '' : 's'} handed to the SMS / e-mail sender (simulated: no gateway is connected).` });
   } catch (err) {
     sendDbError(res, err, 'NOTIFY');
+  }
+});
+
+router.get('/litigant-view', async (req, res) => {
+  const personId = toPositiveInt(req.query.person);
+  if (!personId) return res.status(400).json({ error: 'Choose the party whose view you want to see.' });
+
+  try {
+    const me = await signedIn(req);
+    if (!STAFF.includes(me.approle)) throw userError('Only registry staff can open the litigant view for a party (FR-27).', 403);
+    const party = (await pool.query(
+      'SELECT p.personid, p.name FROM party pa JOIN person p ON p.personid = pa.personid WHERE pa.personid = $1', [personId])).rows[0];
+    if (!party) throw userError(`Person ${personId} is not a party in any case.`, 404);
+    const cases = await asLitigant(personId, async (client) =>
+      (await client.query('SELECT * FROM v_litigant_case_status ORDER BY next_hearing_date NULLS LAST')).rows);
+    console.log(`[LITIGANT] SET LOCAL ROLE nyaya_litigant, nyaya.personid = ${personId} -> result.rowCount = ${cases.length} ${by(me)}`);
+    res.json({ party, cases });
+  } catch (err) {
+    sendDbError(res, err, 'LITIGANT');
   }
 });
 

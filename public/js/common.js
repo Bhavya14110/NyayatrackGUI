@@ -2,9 +2,9 @@ const $ = (id) => document.getElementById(id);
 const dash = '<span class="muted">—</span>';
 const ROLE_ORDER = ['Registry Clerk', 'Court Admin', 'Judge', 'Advocate', 'Litigant', 'System Admin'];
 const ROLE_VIEWS = {
-  'Registry Clerk': ['cases', 'causelist', 'search', 'reports', 'notifications'],
-  'Court Admin': ['cases', 'causelist', 'search', 'reports', 'notifications'],
-  'Judge': ['cases', 'causelist', 'search', 'reports'],
+  'Registry Clerk': ['cases', 'dashboard', 'search', 'details', 'causelist', 'reschedule', 'audit', 'lview', 'reports', 'notifications'],
+  'Court Admin': ['cases', 'dashboard', 'search', 'details', 'causelist', 'reschedule', 'transfer', 'audit', 'lview', 'reports', 'notifications'],
+  'Judge': ['cases', 'dashboard', 'search', 'details', 'causelist', 'audit', 'reports'],
   'Advocate': ['advocate'],
   'Litigant': ['litigant'],
   'System Admin': ['admin'],
@@ -49,6 +49,17 @@ const cell = (v) => (v === null || v === undefined || v === '' ? dash : escapeHt
 function optionList(items, valueKey, labelFn, placeholder) {
   return (placeholder ? `<option value="">${escapeHtml(placeholder)}</option>` : '')
     + items.map((it) => `<option value="${escapeHtml(it[valueKey])}">${escapeHtml(labelFn(it))}</option>`).join('');
+}
+
+function auditDiff(r) {
+  const show = (v) => (v === null || v === undefined ? '∅' : typeof v === 'object' ? JSON.stringify(v) : String(v));
+  if (r.action === 'UPDATE' && r.oldvalue && r.newvalue) {
+    const keys = Object.keys(r.newvalue).filter((k) => JSON.stringify(r.oldvalue[k]) !== JSON.stringify(r.newvalue[k]));
+    return keys.map((k) => `<b>${escapeHtml(k)}</b>: ${escapeHtml(show(r.oldvalue[k]))} → ${escapeHtml(show(r.newvalue[k]))}`).join('<br>') || dash;
+  }
+  const v = r.newvalue || r.oldvalue || {};
+  return Object.entries(v).filter(([, x]) => x !== null).slice(0, 6)
+    .map(([k, x]) => `<b>${escapeHtml(k)}</b>: ${escapeHtml(show(x))}`).join(' · ');
 }
 
 function emptyRow(cols, text) {

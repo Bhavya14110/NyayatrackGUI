@@ -3,7 +3,8 @@ const pool = require('../db');
 const { PARTY_ROLES, CUSTODY, OUTCOMES, DOC_TYPES, DOC_STAGES, isValidDate, isValidTime, toPositiveInt,
   emptyToNull } = require('../lib/validate');
 const { userError, sendDbError } = require('../lib/errors');
-const { STAFF, COURT_USERS, withSession, by } = require('../lib/session');
+const { STAFF, COURT_USERS, withSession, asNotifier, by } = require('../lib/session');
+const { toNotification } = require('../lib/notify');
 
 const router = express.Router();
 
@@ -251,6 +252,31 @@ router.post('/cases/:id/hearings', async (req, res) => {
   }
 });
 
+const HEARING_ONE_SQL = `
+  SELECT h.hearingid, h.hearingdate, h.hearingtime, h.endtime, h.mode, h.outcome, h.vclink, h.courtroomnumber,
+         h.courtid, c.courtname, h.caseid, cc.cnr, cc.casetype, p.name AS judge
+    FROM hearing h
+    JOIN court_case cc ON cc.caseid = h.caseid
+    JOIN court c ON c.courtid = h.courtid
+    JOIN person p ON p.personid = h.judgeid
+   WHERE h.hearingid = $1`;
+
+router.get('/hearings/:hid', async (req, res) => {
+  const hid = toPositiveInt(req.params.hid);
+  if (!hid) return res.status(400).json({ error: 'Hearing ID must be a positive whole number.' });
+
+  try {
+    const row = await withSession(req, COURT_USERS, async (client) => {
+      const found = (await client.query(HEARING_ONE_SQL, [hid])).rows[0];
+      if (!found) throw userError(`Hearing ${hid} was not found in your court.`, 404);
+      return found;
+    });
+    res.json(row);
+  } catch (err) {
+    sendDbError(res, err, 'HEARING');
+  }
+});
+
 router.post('/hearings/:hid/reschedule', async (req, res) => {
   const hid = toPositiveInt(req.params.hid);
   const date = emptyToNull(req.body.date);
@@ -265,13 +291,20 @@ router.post('/hearings/:hid/reschedule', async (req, res) => {
   if (fail(errors, res)) return;
 
   try {
-    await withSession(req, STAFF, async (client, me) => {
-      const visible = await client.query('SELECT 1 FROM hearing WHERE hearingid = $1', [hid]);
+    const cnr = await withSession(req, STAFF, async (client, me) => {
+      const visible = await client.query(
+        'SELECT cc.cnr FROM hearing h JOIN court_case cc ON cc.caseid = h.caseid WHERE h.hearingid = $1', [hid]);
       if (!visible.rowCount) throw userError(`Hearing ${hid} was not found in your court.`, 404);
       await client.query('CALL sp_reschedule_hearing($1, $2, $3, $4, $5, $6)', [hid, date, start, end, room, me.personid]);
       console.log(`[HEARING] CALL sp_reschedule_hearing(${hid} -> ${date} ${start}) ${by(me)}`);
+      return visible.rows[0].cnr;
     });
-    res.json({ message: `Hearing #${hid} moved to ${date} at ${start}. The parties and advocates now appear in the notification feed.` });
+    const notify = await asNotifier(async (client) => (await client.query(
+      'SELECT * FROM v_notification_queue WHERE cnr = $1 ORDER BY changedat DESC, audience, name', [cnr])).rows);
+    res.json({
+      message: `Hearing #${hid} moved to ${date} at ${start}. ${notify.length} people must be told of the change.`,
+      notifications: notify.map(toNotification),
+    });
   } catch (err) {
     sendDbError(res, err, 'HEARING');
   }
@@ -573,12 +606,61 @@ router.post('/cases/:id/transfer', async (req, res) => {
   if (fail(errors, res)) return;
 
   try {
-    await withSession(req, ['Court Admin'], async (client, me) => {
+    const assignments = await withSession(req, ['Court Admin'], async (client, me) => {
       await visibleCase(client, id);
       await client.query('CALL sp_transfer_case($1, $2, $3, $4, $5, $6)', [id, judgeId, date, me.personid, type, note]);
       console.log(`[TRANSFER] CALL sp_transfer_case(case ${id} -> judge ${judgeId}, ${type}) ${by(me)}`);
+      return (await client.query(ASSIGNMENTS_SQL, [id])).rows;
     });
-    res.json({ message: `Case ${id} handed over to judge #${judgeId} from ${date} (${type}).` });
+    const moved = assignments.length === 0 ? ' The case has moved to the new judge\'s court and leaves yours.' : '';
+    res.json({ message: `Case ${id} handed over to judge #${judgeId} from ${date} (${type}).${moved}`, assignments });
+  } catch (err) {
+    sendDbError(res, err, 'TRANSFER');
+  }
+});
+
+const CASE_HEADER_SQL = `
+  SELECT cc.caseid, cc.cnr, cc.casetype, cc.status, cc.stage, cc.priority, cc.priorityreason, cc.disposaltype,
+         cc.filingdate, cc.registrationdate, cc.courtfeedue, cc.legacyregisterref, cc.originalcaseid, cc.leadcaseid,
+         c.courtname, cr.firrefnumber, cr.chargesheetrefnumber
+    FROM court_case cc
+    JOIN court c ON c.courtid = cc.courtid
+    LEFT JOIN criminal_case cr ON cr.caseid = cc.caseid
+   WHERE cc.caseid = $1`;
+
+router.get('/cases/:id/full', async (req, res) => {
+  try {
+    const data = await withSession(req, COURT_USERS, async (client, me) => {
+      const c = await visibleCase(client, toPositiveInt(req.params.id));
+      const id = c.caseid;
+      const result = {
+        header: (await client.query(CASE_HEADER_SQL, [id])).rows[0],
+        parties: (await client.query(PARTIES_OF_CASE_SQL, [id])).rows,
+        assignments: (await client.query(ASSIGNMENTS_SQL, [id])).rows,
+        hearings: (await client.query(HEARINGS_SQL, [id])).rows,
+        orders: (await client.query(ORDERS_SQL, [id])).rows,
+        adjournments: (await client.query(ADJOURNMENTS_SQL, [id])).rows,
+      };
+      console.log(`[DETAILS] case ${id}: ${result.parties.length} parties, ${result.hearings.length} hearings, ${result.orders.length} orders, ${result.adjournments.length} adjournments ${by(me)}`);
+      return result;
+    });
+    res.json(data);
+  } catch (err) {
+    sendDbError(res, err, 'DETAILS');
+  }
+});
+
+router.get('/transfer/cases', async (req, res) => {
+  try {
+    const rows = await withSession(req, ['Court Admin'], async (client) => (await client.query(
+      `SELECT cc.caseid, cc.cnr, cc.casetype, cc.status,
+              (SELECT p.name FROM assigned_to a JOIN person p ON p.personid = a.judgeid
+                WHERE a.caseid = cc.caseid AND a.enddate IS NULL) AS current_judge,
+              (SELECT a.judgeid FROM assigned_to a WHERE a.caseid = cc.caseid AND a.enddate IS NULL) AS current_judgeid
+         FROM court_case cc
+        WHERE cc.status IN ('Registered', 'Hearing')
+        ORDER BY cc.caseid`)).rows);
+    res.json(rows);
   } catch (err) {
     sendDbError(res, err, 'TRANSFER');
   }
