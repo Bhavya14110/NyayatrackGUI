@@ -14,341 +14,449 @@
       document.documentElement.setAttribute('data-theme', theme);
     })();
   </script>
-  <style>
-    :root {
-      color-scheme: light;
-      --bg: #f4f6f9;
-      --card: #ffffff;
-      --text: #1f2933;
-      --muted: #6b7280;
-      --border: #d9dee5;
-      --input-bg: #ffffff;
-      --input-disabled: #eef0f3;
-      --disabled-text: #9aa1ab;
-      --header-bg: #172554;
-      --header-sub: #c7d2fe;
-      --th-bg: #eef2f7;
-      --row-hover: #f8fafc;
-      --primary: #1d4ed8;
-      --primary-dark: #1e40af;
-      --secondary-bg: #e5e7eb;
-      --edit-bg: #e0e7ff;
-      --edit-text: #1e40af;
-      --delete-bg: #fde2e2;
-      --danger: #c62828;
-      --success-bg: #e7f6ec;
-      --success-text: #1b6b35;
-      --error-bg: #fdecec;
-      --error-text: #a12020;
-      --highlight: #fff6cc;
-      --filter-bg: #f8fafc;
-    }
-    :root[data-theme="dark"] {
-      color-scheme: dark;
-      --bg: #0f172a;
-      --card: #1e293b;
-      --text: #e5e7eb;
-      --muted: #94a3b8;
-      --border: #334155;
-      --input-bg: #0f172a;
-      --input-disabled: #1a2436;
-      --disabled-text: #64748b;
-      --header-bg: #020617;
-      --header-sub: #a5b4fc;
-      --th-bg: #273449;
-      --row-hover: #24324a;
-      --primary: #3b82f6;
-      --primary-dark: #2563eb;
-      --secondary-bg: #334155;
-      --edit-bg: #1e3a8a;
-      --edit-text: #c7d2fe;
-      --delete-bg: #4c1d1d;
-      --danger: #fca5a5;
-      --success-bg: #14532d;
-      --success-text: #bbf7d0;
-      --error-bg: #4c1d1d;
-      --error-text: #fecaca;
-      --highlight: #3f3a1a;
-      --filter-bg: #172033;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: "Segoe UI", Arial, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      font-size: 14px;
-    }
-    header {
-      background: var(--header-bg);
-      color: #fff;
-      padding: 16px 24px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 16px;
-      flex-wrap: wrap;
-    }
-    header h1 { margin: 0; font-size: 22px; }
-    header p { margin: 4px 0 0; color: var(--header-sub); font-size: 13px; }
-    .theme-toggle {
-      background: rgba(255, 255, 255, 0.12);
-      color: #fff;
-      border: 1px solid rgba(255, 255, 255, 0.3);
-    }
-    .theme-toggle:hover { background: rgba(255, 255, 255, 0.22); }
-    main { max-width: 1560px; margin: 0 auto; padding: 20px 16px 40px; }
-    .card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 18px 20px;
-      margin-bottom: 20px;
-    }
-    .card h2 { margin: 0 0 14px; font-size: 18px; }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-      gap: 12px 16px;
-    }
-    label { display: block; font-weight: 600; font-size: 13px; margin-bottom: 4px; }
-    label .hint { font-weight: 400; color: var(--muted); }
-    input, select {
-      width: 100%;
-      padding: 8px 10px;
-      border: 1px solid var(--border);
-      border-radius: 5px;
-      font-size: 14px;
-      font-family: inherit;
-      background: var(--input-bg);
-      color: var(--text);
-    }
-    input:disabled { background: var(--input-disabled); color: var(--disabled-text); }
-    select { cursor: pointer; }
-    .actions { margin-top: 16px; display: flex; gap: 10px; }
-    button {
-      border: none;
-      border-radius: 5px;
-      padding: 8px 16px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      font-family: inherit;
-    }
-    .btn-primary { background: var(--primary); color: #fff; }
-    .btn-primary:hover { background: var(--primary-dark); }
-    .btn-secondary { background: var(--secondary-bg); color: var(--text); }
-    .btn-edit { background: var(--edit-bg); color: var(--edit-text); padding: 5px 10px; font-size: 13px; }
-    .btn-delete { background: var(--delete-bg); color: var(--danger); padding: 5px 10px; font-size: 13px; }
-    .message { padding: 10px 14px; border-radius: 6px; margin-bottom: 16px; display: none; font-weight: 600; }
-    .message.success { display: block; background: var(--success-bg); color: var(--success-text); }
-    .message.error { display: block; background: var(--error-bg); color: var(--error-text); }
-
-    .filters {
-      background: var(--filter-bg);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 14px 16px;
-      margin-bottom: 14px;
-    }
-    .filters .grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
-    .filters-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; gap: 10px; flex-wrap: wrap; }
-    .hidden { display: none; }
-
-    .table-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 12px; flex-wrap: wrap; }
-    .table-head h2 { margin: 0; }
-    .table-head input { width: 260px; }
-    .table-wrap { overflow-x: auto; max-height: 560px; overflow-y: auto; border: 1px solid var(--border); border-radius: 6px; }
-    table { border-collapse: collapse; width: 100%; white-space: nowrap; }
-    th, td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; }
-    th { background: var(--th-bg); position: sticky; top: 0; font-size: 13px; z-index: 1; }
-    tr:hover td { background: var(--row-hover); }
-    tr.highlight td { background: var(--highlight); }
-    .status { padding: 2px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; background: rgba(100, 116, 139, 0.18); }
-    .status.st-Registered { background: rgba(59, 130, 246, 0.2); }
-    .status.st-Hearing { background: rgba(245, 158, 11, 0.24); }
-    .status.st-Disposed { background: rgba(34, 197, 94, 0.22); }
-    .status.st-Returned { background: rgba(239, 68, 68, 0.2); }
-    .status.st-Under-Appeal { background: rgba(168, 85, 247, 0.22); }
-    .num { text-align: right; }
-    .muted { color: var(--muted); }
-
-    .modal-backdrop {
-      position: fixed;
-      inset: 0;
-      background: rgba(15, 23, 42, 0.55);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 16px;
-      z-index: 10;
-    }
-    .modal-backdrop.hidden { display: none; }
-    .modal {
-      background: var(--card);
-      color: var(--text);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 22px 24px;
-      width: 100%;
-      max-width: 420px;
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
-    }
-    .modal h3 { margin: 0 0 8px; font-size: 18px; }
-    .modal p { margin: 0; color: var(--muted); line-height: 1.5; }
-    .modal .actions { justify-content: flex-end; margin-top: 20px; }
-    .btn-danger { background: #c62828; color: #fff; }
-    .btn-danger:hover { background: #a61d1d; }
-    #formTitle.editing { color: var(--primary); }
-  </style>
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
   <header>
     <div>
       <h1>NyayaTrack – Court Case Management</h1>
-      <p>MC212 Lab 11 · Node.js + Express + PostgreSQL · CRUD on the COURT_CASE table</p>
+      <p>MC212 · Node.js + Express + PostgreSQL · CRUD on the COURT_CASE table</p>
     </div>
-    <button type="button" class="theme-toggle" id="themeToggle">Dark mode</button>
+    <div class="header-tools">
+      <label for="signRole">Signed in as</label>
+      <select id="signRole"></select>
+      <select id="signPerson"><option value="">Loading accounts…</option></select>
+      <button type="button" class="theme-toggle" id="themeToggle">Dark mode</button>
+    </div>
   </header>
+  <nav class="tabs" id="tabs">
+    <button type="button" data-view="cases">Cases</button>
+    <button type="button" data-view="causelist">Cause list</button>
+    <button type="button" data-view="search">Search</button>
+    <button type="button" data-view="reports">Reports</button>
+    <button type="button" data-view="notifications">Notifications</button>
+    <button type="button" data-view="advocate">My cases</button>
+    <button type="button" data-view="litigant">My case status</button>
+    <button type="button" data-view="admin">Accounts &amp; audit</button>
+  </nav>
+  <div class="signed-in" id="signedInfo"></div>
 
   <main>
     <div id="message" class="message"></div>
 
-    <section class="card">
-      <h2 id="formTitle">Add new case</h2>
-      <form id="caseForm" novalidate>
-        <div class="grid">
-          <div>
-            <label for="caseType">Case type *</label>
-            <select id="caseType" required>
-              <option value="">-- select --</option>
-              <option>Civil</option><option>Criminal</option><option>Family</option>
-              <option>Commercial</option><option>Writ</option>
-            </select>
+    <div class="view" id="view-cases">
+      <section class="card">
+        <h2 id="formTitle">Add new case</h2>
+        <p class="lead" id="formLead"></p>
+        <form id="caseForm" novalidate>
+          <div class="grid">
+            <div>
+              <label for="caseType">Case type *</label>
+              <select id="caseType" required>
+                <option value="">-- select --</option>
+                <option>Criminal</option><option>Civil</option><option>Commercial</option>
+                <option>Family</option><option>Writ</option>
+              </select>
+            </div>
+            <div>
+              <label for="courtId">Court *</label>
+              <select id="courtId" required><option value="">Loading courts…</option></select>
+            </div>
+            <div>
+              <label for="filingDate">Filing date *</label>
+              <input type="date" id="filingDate" required>
+            </div>
+            <div>
+              <label for="courtFeeDue">Court fee due (₹)</label>
+              <input type="number" id="courtFeeDue" min="0" step="0.01" value="0">
+            </div>
+            <div>
+              <label for="priority">Priority</label>
+              <select id="priority">
+                <option>Normal</option><option>Urgent</option><option>Liberty</option>
+              </select>
+            </div>
+            <div>
+              <label for="priorityReason">Priority reason <span class="hint">(Urgent / Liberty)</span></label>
+              <input type="text" id="priorityReason" maxlength="100">
+            </div>
+            <div>
+              <label for="status">Status</label>
+              <select id="status"><option>Filed</option></select>
+            </div>
+            <div>
+              <label for="stage">Stage <span class="hint">(running cases)</span></label>
+              <select id="stage">
+                <option value="">-- none --</option>
+                <option>Adjourned</option><option>Part Heard</option><option>Evidence</option>
+                <option>Arguments</option><option>Reserved</option><option>Disposed</option>
+              </select>
+            </div>
+            <div>
+              <label for="cnr">CNR <span class="hint">(4 letters + 12 digits)</span></label>
+              <input type="text" id="cnr" maxlength="16" placeholder="e.g. MHPU010000052025">
+            </div>
+            <div>
+              <label for="registrationDate">Registration date</label>
+              <input type="date" id="registrationDate">
+            </div>
+            <div>
+              <label for="returnReason">Return reason <span class="hint">(Returned only)</span></label>
+              <input type="text" id="returnReason" maxlength="80">
+            </div>
+            <div>
+              <label for="disposalType">Disposal type <span class="hint">(decided cases)</span></label>
+              <select id="disposalType">
+                <option value="">-- select --</option>
+                <option>Judgment</option><option>Mediation</option><option>Lok Adalat</option><option>Withdrawn</option>
+              </select>
+            </div>
+            <div>
+              <label for="originalCaseId">Appeal of case # <span class="hint">(appeals only)</span></label>
+              <input type="number" id="originalCaseId" min="1" placeholder="optional">
+            </div>
+            <div>
+              <label for="leadCaseId">Heard with lead case # <span class="hint">(optional)</span></label>
+              <input type="number" id="leadCaseId" min="1" placeholder="optional">
+            </div>
+            <div>
+              <label for="legacyRef">Old register reference <span class="hint">(optional)</span></label>
+              <input type="text" id="legacyRef" maxlength="30" placeholder="e.g. OLDREG/MHPU/2023/0123">
+            </div>
+            <div>
+              <label for="firNumber">FIR number <span class="hint">(criminal only)</span></label>
+              <input type="text" id="firNumber" maxlength="25" placeholder="e.g. FIR-0142/2026">
+            </div>
+            <div>
+              <label for="chargeSheetNumber">Charge sheet number <span class="hint">(criminal only)</span></label>
+              <input type="text" id="chargeSheetNumber" maxlength="25" placeholder="e.g. CS-0698/2026">
+            </div>
           </div>
-          <div>
-            <label for="status">Status *</label>
-            <select id="status" required>
-              <option value="">-- select --</option>
-              <option>Filed</option><option>Returned</option><option>Registered</option>
-              <option>Hearing</option><option>Disposed</option><option>Under Appeal</option>
-            </select>
+          <div class="rule-hint" id="ruleHint"></div>
+          <div class="actions">
+            <button type="submit" class="btn-primary" id="submitBtn">Add case</button>
+            <button type="button" class="btn-secondary" id="cancelBtn" style="display:none">Close case</button>
           </div>
-          <div>
-            <label for="courtId">Court *</label>
-            <select id="courtId" required><option value="">Loading courts…</option></select>
-          </div>
-          <div>
-            <label for="filingDate">Filing date *</label>
-            <input type="date" id="filingDate" required>
-          </div>
-          <div>
-            <label for="cnr">CNR <span class="hint">(16 chars, registered only)</span></label>
-            <input type="text" id="cnr" maxlength="16" placeholder="e.g. DLHC010012342026">
-          </div>
-          <div>
-            <label for="registrationDate">Registration date <span class="hint">(registered only)</span></label>
-            <input type="date" id="registrationDate">
-          </div>
-          <div>
-            <label for="courtFeeDue">Court fee due (₹)</label>
-            <input type="number" id="courtFeeDue" min="0" step="0.01" value="0">
-          </div>
-          <div>
-            <label for="returnReason">Return reason <span class="hint">(Returned only)</span></label>
-            <input type="text" id="returnReason" maxlength="80">
-          </div>
-          <div>
-            <label for="originalCaseId">Original case ID <span class="hint">(appeals only)</span></label>
-            <input type="number" id="originalCaseId" min="1" placeholder="optional">
-          </div>
-        </div>
-        <div class="actions">
-          <button type="submit" class="btn-primary" id="submitBtn">Add case</button>
-          <button type="button" class="btn-secondary" id="cancelBtn" style="display:none">Cancel edit</button>
-        </div>
-      </form>
-    </section>
+        </form>
 
-    <section class="card">
-      <div class="table-head">
-        <h2>All cases <span id="count" class="muted"></span></h2>
-        <input type="search" id="filter" placeholder="Quick search in results…">
-      </div>
+        <div class="casefile hidden" id="caseFile">
+          <h2>Case file</h2>
+          <div class="subtabs" id="cfTabs">
+            <button type="button" data-tab="parties">Parties</button>
+            <button type="button" data-tab="fee">Court fee</button>
+            <button type="button" data-tab="hearings">Hearings</button>
+            <button type="button" data-tab="orders">Orders</button>
+            <button type="button" data-tab="adjournments">Adjournments</button>
+            <button type="button" data-tab="documents">Documents</button>
+            <button type="button" data-tab="judges">Judge &amp; transfer</button>
+            <button type="button" data-tab="history">History</button>
+          </div>
+          <div id="cfBody"></div>
+        </div>
+      </section>
 
-      <div class="filters">
-        <div class="grid">
-          <div>
-            <label for="fType">Case type</label>
-            <select id="fType">
-              <option value="">All types</option>
-              <option>Civil</option><option>Criminal</option><option>Family</option>
-              <option>Commercial</option><option>Writ</option>
-            </select>
+      <section class="card">
+        <div class="table-head">
+          <h2>All cases <span id="count" class="muted"></span></h2>
+          <input type="search" id="filter" placeholder="Quick search in results…">
+        </div>
+
+        <div class="filters">
+          <div class="grid">
+            <div>
+              <label for="fType">Case type</label>
+              <select id="fType">
+                <option value="">All types</option>
+                <option>Criminal</option><option>Civil</option><option>Commercial</option>
+                <option>Family</option><option>Writ</option>
+              </select>
+            </div>
+            <div>
+              <label for="fStatus">Status</label>
+              <select id="fStatus">
+                <option value="">All statuses</option>
+                <option>Filed</option><option>Returned</option><option>Registered</option>
+                <option>Hearing</option><option>Disposed</option><option>Under Appeal</option>
+              </select>
+            </div>
+            <div>
+              <label for="fPriority">Priority</label>
+              <select id="fPriority">
+                <option value="">All priorities</option>
+                <option>Normal</option><option>Urgent</option><option>Liberty</option>
+              </select>
+            </div>
+            <div>
+              <label for="fFee">Court fee</label>
+              <select id="fFee">
+                <option value="">Any fee</option>
+                <option value="due">Fee due (more than ₹0)</option>
+                <option value="none">No fee due (₹0)</option>
+              </select>
+            </div>
+            <div>
+              <label for="fDateField">Period based on</label>
+              <select id="fDateField">
+                <option value="filing">Filing date</option>
+                <option value="registration">Registration date</option>
+              </select>
+            </div>
+            <div>
+              <label for="fPeriod">Period</label>
+              <select id="fPeriod">
+                <option value="">Any time</option>
+                <option value="last30">Last 30 days</option>
+                <option value="last3m">Last 3 months</option>
+                <option value="last6m">Last 6 months</option>
+                <option value="last12m">Last 12 months</option>
+                <optgroup label="Calendar year" id="yearOptions"></optgroup>
+                <option value="custom">Custom range…</option>
+              </select>
+            </div>
+            <div>
+              <label for="fSort">Sort by</label>
+              <select id="fSort">
+                <option value="id_desc">Case ID – newest</option>
+                <option value="id_asc">Case ID – oldest</option>
+                <option value="filing_desc">Filing date – newest</option>
+                <option value="filing_asc">Filing date – oldest</option>
+                <option value="reg_desc">Reg. date – newest</option>
+                <option value="reg_asc">Reg. date – oldest</option>
+                <option value="fee_desc">Fee due – highest</option>
+                <option value="fee_asc">Fee due – lowest</option>
+                <option value="priority">Priority – urgent first</option>
+              </select>
+            </div>
+            <div class="custom-range hidden">
+              <label for="fFrom">From</label>
+              <input type="date" id="fFrom">
+            </div>
+            <div class="custom-range hidden">
+              <label for="fTo">To</label>
+              <input type="date" id="fTo">
+            </div>
           </div>
-          <div>
-            <label for="fStatus">Status</label>
-            <select id="fStatus">
-              <option value="">All statuses</option>
-              <option>Filed</option><option>Returned</option><option>Registered</option>
-              <option>Hearing</option><option>Disposed</option><option>Under Appeal</option>
-            </select>
-          </div>
-          <div>
-            <label for="fFee">Court fee</label>
-            <select id="fFee">
-              <option value="">Any fee</option>
-              <option value="due">Fee due (more than ₹0)</option>
-              <option value="none">No fee due (₹0)</option>
-            </select>
-          </div>
-          <div>
-            <label for="fDateField">Date to filter on</label>
-            <select id="fDateField">
-              <option value="filing">Filing date</option>
-              <option value="registration">Registration date</option>
-            </select>
-          </div>
-          <div>
-            <label for="fPeriod">Period</label>
-            <select id="fPeriod">
-              <option value="">Any time</option>
-              <option value="last30">Last 30 days</option>
-              <option value="last3m">Last 3 months</option>
-              <option value="last6m">Last 6 months</option>
-              <option value="last12m">Last 12 months</option>
-              <optgroup label="Calendar year" id="yearOptions"></optgroup>
-              <option value="custom">Custom range…</option>
-            </select>
-          </div>
-          <div class="custom-range hidden">
-            <label for="fFrom">From</label>
-            <input type="date" id="fFrom">
-          </div>
-          <div class="custom-range hidden">
-            <label for="fTo">To</label>
-            <input type="date" id="fTo">
+          <div class="filters-foot">
+            <span id="filterSummary" class="muted">No filters applied</span>
+            <button type="button" class="btn-secondary" id="resetFilters">Reset filters</button>
           </div>
         </div>
-        <div class="filters-foot">
-          <span id="filterSummary" class="muted">No filters applied</span>
-          <button type="button" class="btn-secondary" id="resetFilters">Reset filters</button>
-        </div>
-      </div>
 
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Case ID</th><th>CNR</th><th>Type</th><th>Filing date</th><th>Reg. date</th>
-              <th>Status</th><th class="num">Fee due (₹)</th><th>Return reason</th>
-              <th>Court</th><th>Orig. case</th><th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="caseRows"><tr><td colspan="11" class="muted">Loading…</td></tr></tbody>
-        </table>
-      </div>
-    </section>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Case ID</th><th>CNR</th><th>Type</th><th>Filing date</th><th>Reg. date</th>
+                <th>Status</th><th>Stage</th><th>Priority</th><th class="num">Fee due (₹)</th>
+                <th>Court</th><th>Linked to</th><th>Remarks</th><th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="caseRows"><tr><td colspan="13" class="muted">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <div class="view hidden" id="view-causelist">
+      <section class="card">
+        <h2>Daily cause list <span class="muted" id="clCourt"></span></h2>
+        <p class="lead">Urgent and liberty matters are called first, then the rest by time (FR-12, FR-20). The list is built from the hearings on record, so it changes the moment a hearing is fixed or moved.</p>
+        <div class="inline-form no-print">
+          <div><label for="clDate">Date</label><input type="date" id="clDate"></div>
+          <div><button type="button" class="btn-primary" id="clLoad">Show cause list</button></div>
+          <div><button type="button" class="btn-secondary" id="clPrint">Print</button></div>
+        </div>
+        <p class="note" id="clInfo"></p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Sr.</th><th>Time</th><th>Venue</th><th>Case</th><th>Type</th><th>Priority</th><th>Stage</th><th>Parties</th><th>Judge</th><th>Outcome</th></tr></thead>
+            <tbody id="clRows"><tr><td colspan="10" class="muted">Choose a date.</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <div class="view hidden" id="view-search">
+      <section class="card">
+        <h2>Search cases</h2>
+        <p class="lead">Search by case number, party, advocate, filing dates or old paper-register reference (FR-19, FR-31). Fill any one or more fields.</p>
+        <form id="searchForm" class="inline-form" novalidate>
+          <div><label for="sCnr">CNR</label><input type="text" id="sCnr" maxlength="16" placeholder="MHPU010000052025"></div>
+          <div><label for="sParty">Party name</label><input type="text" id="sParty" maxlength="60" placeholder="e.g. khan"></div>
+          <div><label for="sAdvocate">Advocate name</label><input type="text" id="sAdvocate" maxlength="60" placeholder="e.g. sharma"></div>
+          <div><label for="sFrom">Filed from</label><input type="date" id="sFrom"></div>
+          <div><label for="sTo">Filed to</label><input type="date" id="sTo"></div>
+          <div><label for="sLegacy">Old register ref</label><input type="text" id="sLegacy" maxlength="60" placeholder="e.g. OLDREG"></div>
+          <div><button type="submit" class="btn-primary">Search</button></div>
+        </form>
+        <p class="note" id="sInfo"></p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Case ID</th><th>CNR</th><th>Type</th><th>Status</th><th>Stage</th><th>Court</th><th>Filed</th><th>Old ref</th><th></th></tr></thead>
+            <tbody id="sRows"><tr><td colspan="9" class="muted">No search yet.</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <div class="view hidden" id="view-reports">
+      <section class="card">
+        <h2>Pendency and ageing <span class="muted" id="rCourt"></span></h2>
+        <p class="lead">Pending = registered or being heard. Click any number to see the cases behind it (FR-06).</p>
+        <div class="table-wrap short">
+          <table>
+            <thead><tr><th>Case type</th><th class="num">Up to 3 months</th><th class="num">3–6 months</th><th class="num">6–12 months</th><th class="num">Over 1 year</th><th class="num">Total</th><th class="num">Average age (days)</th></tr></thead>
+            <tbody id="rPendency"></tbody>
+          </table>
+        </div>
+        <h3 id="rDrillTitle" class="hidden"></h3>
+        <div class="table-wrap short hidden" id="rDrillWrap">
+          <table>
+            <thead><tr><th>Case ID</th><th>CNR</th><th>Type</th><th>Status</th><th>Stage</th><th>Priority</th><th>Filed</th><th class="num">Age (days)</th><th></th></tr></thead>
+            <tbody id="rDrill"></tbody>
+          </table>
+        </div>
+      </section>
+      <section class="card">
+        <h2>How decided cases ended</h2>
+        <p class="lead">Judgment, mediation, Lok Adalat or withdrawal (FR-11).</p>
+        <div class="table-wrap short">
+          <table>
+            <thead><tr><th>Disposal type</th><th class="num">Cases</th><th class="num">Share</th></tr></thead>
+            <tbody id="rDisposal"></tbody>
+          </table>
+        </div>
+      </section>
+      <section class="card">
+        <h2>Same adjournment ground used again</h2>
+        <p class="lead">Cases where one ground was used two or more times (FR-21 pattern flag).</p>
+        <div class="table-wrap short">
+          <table>
+            <thead><tr><th>Case</th><th>Ground</th><th class="num">Times used</th><th>Decisions</th><th>Last used</th><th></th></tr></thead>
+            <tbody id="rRepeat"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <div class="view hidden" id="view-notifications">
+      <section class="card">
+        <h2>Notification feed</h2>
+        <p class="lead">Every hearing moved in the last 24 hours, one row per party and advocate to tell (FR-05a). The feed is read through the database role <code>nyaya_notifier</code>, which can read nothing else. Phone numbers are masked (NFR-02).</p>
+        <p class="note">Sending (FR-05b) needs an SMS / e-mail gateway, which this project does not have, so “Send” hands the message to a simulated sender and logs it in the server console.</p>
+        <div class="actions no-print" style="margin-top:0;margin-bottom:12px">
+          <button type="button" class="btn-primary" id="nSend">Send selected</button>
+          <button type="button" class="btn-secondary" id="nReload">Refresh</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th><input type="checkbox" id="nAll" title="Select all"></th><th>To</th><th>Phone</th><th>Case</th><th>Moved from</th><th>Moved to</th><th>Venue</th><th>Message</th><th>Status</th></tr></thead>
+            <tbody id="nRows"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <div class="view hidden" id="view-litigant">
+      <section class="card">
+        <h2>My case status</h2>
+        <p class="lead">Your own case, in plain words (FR-07, FR-29, NFR-04). Only cases in which you are a party are shown.</p>
+        <div class="portal-cards" id="lCases"></div>
+      </section>
+      <section class="card">
+        <h2>Hearings and orders in my case</h2>
+        <div class="table-wrap short">
+          <table>
+            <thead><tr><th>Case</th><th>Date</th><th>Time</th><th>Where</th><th>What happened</th><th>Order</th><th>Adjournment</th></tr></thead>
+            <tbody id="lEvents"></tbody>
+          </table>
+        </div>
+        <h3>Documents on record</h3>
+        <div class="table-wrap short">
+          <table>
+            <thead><tr><th>Case</th><th>Document</th><th>Date</th><th>Stage</th></tr></thead>
+            <tbody id="lDocs"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <div class="view hidden" id="view-advocate">
+      <section class="card">
+        <h2>My cases <span class="muted" id="aCount"></span></h2>
+        <p class="lead">Every case in which you represent a party, across courts (FR-30).</p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>CNR</th><th>Type</th><th>Status</th><th>Stage</th><th>Priority</th><th>Court</th><th>My clients</th><th>Next hearing</th></tr></thead>
+            <tbody id="aCases"></tbody>
+          </table>
+        </div>
+      </section>
+      <section class="card">
+        <h2>Coming hearings</h2>
+        <div class="table-wrap short">
+          <table>
+            <thead><tr><th>Date</th><th>Time</th><th>Case</th><th>Mode</th><th>Venue / link</th><th>Status</th></tr></thead>
+            <tbody id="aEvents"></tbody>
+          </table>
+        </div>
+        <h3>Documents in my cases</h3>
+        <div class="table-wrap short">
+          <table>
+            <thead><tr><th>Case</th><th>Document</th><th>Date</th><th>Stage</th></tr></thead>
+            <tbody id="aDocs"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <div class="view hidden" id="view-admin">
+      <section class="card">
+        <h2>User accounts</h2>
+        <p class="lead">One account per person, with one role. The System Admin manages accounts but sees no names or case content (FR-27, NFR-02); the database checks that the person really holds the role.</p>
+        <div class="box">
+          <h4>Create account</h4>
+          <form class="inline-form" id="accForm" novalidate>
+            <div><label for="accPerson">Person ID</label><input type="number" id="accPerson" min="1"></div>
+            <div>
+              <label for="accRole">Role</label>
+              <select id="accRole">
+                <option>Litigant</option><option>Advocate</option><option>Registry Clerk</option>
+                <option>Court Admin</option><option>Judge</option><option>System Admin</option>
+              </select>
+            </div>
+            <div><label for="accCourt">Court ID <span class="hint">(court roles)</span></label><input type="number" id="accCourt" min="1"></div>
+            <div><button type="submit" class="btn-primary">Create</button></div>
+          </form>
+        </div>
+        <div class="inline-form" style="margin:14px 0 10px">
+          <div>
+            <label for="accFilter">Show role</label>
+            <select id="accFilter">
+              <option value="">All roles</option>
+              <option>Judge</option><option>Registry Clerk</option><option>Court Admin</option>
+              <option>Advocate</option><option>Litigant</option><option>System Admin</option>
+            </select>
+          </div>
+        </div>
+        <div class="table-wrap short">
+          <table>
+            <thead><tr><th>Account</th><th>Person ID</th><th>Role</th><th>Court ID</th><th>Active</th><th></th></tr></thead>
+            <tbody id="accRows"></tbody>
+          </table>
+        </div>
+      </section>
+      <section class="card">
+        <h2>Technical audit summary</h2>
+        <p class="lead">Counts of changes per table: no case content (FR-23, NFR-02).</p>
+        <div class="table-wrap short">
+          <table>
+            <thead><tr><th>Table</th><th>Action</th><th class="num">Changes</th><th>Last activity</th></tr></thead>
+            <tbody id="auditRows"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
   </main>
 
   <div id="confirmModal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
@@ -362,294 +470,11 @@
     </div>
   </div>
 
-  <script>
-    const form = document.getElementById('caseForm');
-    const fields = ['caseType', 'status', 'courtId', 'filingDate', 'cnr', 'registrationDate',
-                    'courtFeeDue', 'returnReason', 'originalCaseId'];
-    const $ = (id) => document.getElementById(id);
-    let allCases = [];
-    let editingId = null;
-    let highlightId = null;
-    let yearsLoaded = false;
-
-    function updateThemeButton() {
-      const dark = document.documentElement.getAttribute('data-theme') === 'dark';
-      $('themeToggle').textContent = dark ? '☀ Light mode' : '☾ Dark mode';
-    }
-    $('themeToggle').addEventListener('click', () => {
-      const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-      document.documentElement.setAttribute('data-theme', next);
-      try { localStorage.setItem('nyaya-theme', next); } catch (e) {}
-      updateThemeButton();
-    });
-    updateThemeButton();
-
-    function showMessage(text, type) {
-      const box = $('message');
-      box.textContent = text;
-      box.className = 'message ' + type;
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-
-    function escapeHtml(v) {
-      if (v === null || v === undefined) return '';
-      return String(v).replace(/[&<>"']/g, (c) =>
-        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    }
-
-    function applyStatusRules() {
-      const status = $('status').value;
-      const registered = status !== '' && status !== 'Filed' && status !== 'Returned';
-      $('cnr').disabled = !registered;
-      $('registrationDate').disabled = !registered;
-      $('returnReason').disabled = status !== 'Returned';
-      if (!registered) { $('cnr').value = ''; $('registrationDate').value = ''; }
-      if (status !== 'Returned') $('returnReason').value = '';
-    }
-    $('status').addEventListener('change', applyStatusRules);
-
-    function isoDate(d) {
-      const pad = (n) => String(n).padStart(2, '0');
-      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-    }
-
-    function periodRange() {
-      const p = $('fPeriod').value;
-      const today = new Date();
-      const back = (months, days = 0) => {
-        const d = new Date(today);
-        d.setMonth(d.getMonth() - months);
-        d.setDate(d.getDate() - days);
-        return isoDate(d);
-      };
-      if (p === 'last30') return { from: back(0, 30), to: isoDate(today) };
-      if (p === 'last3m') return { from: back(3), to: isoDate(today) };
-      if (p === 'last6m') return { from: back(6), to: isoDate(today) };
-      if (p === 'last12m') return { from: back(12), to: isoDate(today) };
-      if (/^year\d{4}$/.test(p)) { const y = p.slice(4); return { from: `${y}-01-01`, to: `${y}-12-31` }; }
-      if (p === 'custom') return { from: $('fFrom').value, to: $('fTo').value };
-      return { from: '', to: '' };
-    }
-
-    function filterParams() {
-      const { from, to } = periodRange();
-      const params = new URLSearchParams();
-      if ($('fType').value) params.set('type', $('fType').value);
-      if ($('fStatus').value) params.set('status', $('fStatus').value);
-      if ($('fFee').value) params.set('fee', $('fFee').value);
-      if (from || to) {
-        params.set('dateField', $('fDateField').value);
-        if (from) params.set('from', from);
-        if (to) params.set('to', to);
-      }
-      return params;
-    }
-
-    function updateFilterSummary() {
-      const parts = [];
-      const selText = (id) => $(id).options[$(id).selectedIndex].text;
-      if ($('fType').value) parts.push(selText('fType'));
-      if ($('fStatus').value) parts.push(selText('fStatus'));
-      if ($('fFee').value) parts.push(selText('fFee'));
-      const { from, to } = periodRange();
-      if (from || to) {
-        const field = $('fDateField').value === 'registration' ? 'Registered' : 'Filed';
-        parts.push(`${field} ${from ? 'from ' + from : ''}${from && to ? ' ' : ''}${to ? 'to ' + to : ''}`);
-      }
-      $('filterSummary').textContent = parts.length
-        ? `${parts.length} filter${parts.length > 1 ? 's' : ''}: ${parts.join(' · ')}`
-        : 'No filters applied';
-    }
-
-    function onFilterChange() {
-      document.querySelectorAll('.custom-range').forEach((el) =>
-        el.classList.toggle('hidden', $('fPeriod').value !== 'custom'));
-      updateFilterSummary();
-      loadCases();
-    }
-    ['fType', 'fStatus', 'fFee', 'fDateField', 'fPeriod', 'fFrom', 'fTo'].forEach((id) =>
-      $(id).addEventListener('change', onFilterChange));
-
-    $('resetFilters').addEventListener('click', () => {
-      ['fType', 'fStatus', 'fFee', 'fPeriod', 'fFrom', 'fTo'].forEach((id) => { $(id).value = ''; });
-      $('fDateField').value = 'filing';
-      $('filter').value = '';
-      onFilterChange();
-    });
-
-    function fillYearOptions(cases) {
-      const years = new Set();
-      cases.forEach((c) => {
-        if (c.filingdate) years.add(c.filingdate.slice(0, 4));
-        if (c.registrationdate) years.add(c.registrationdate.slice(0, 4));
-      });
-      $('yearOptions').innerHTML = [...years].sort().reverse()
-        .map((y) => `<option value="year${y}">${y}</option>`).join('');
-      yearsLoaded = true;
-    }
-
-    async function loadCourts() {
-      try {
-        const res = await fetch('/api/courts');
-        const courts = await res.json();
-        if (!res.ok) throw new Error(courts.error);
-        $('courtId').innerHTML = '<option value="">-- select --</option>' + courts.map((c) =>
-          `<option value="${c.courtid}">${c.courtid} – ${escapeHtml(c.courtname)}</option>`).join('');
-      } catch (err) {
-        $('courtId').innerHTML = '<option value="">Could not load courts</option>';
-        showMessage('Could not load courts: ' + err.message, 'error');
-      }
-    }
-
-    async function loadCases() {
-      const params = filterParams();
-      try {
-        const res = await fetch('/api/cases' + (params.toString() ? '?' + params : ''));
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error);
-        allCases = data;
-        if (!yearsLoaded && params.toString() === '') fillYearOptions(data);
-        renderTable();
-      } catch (err) {
-        allCases = [];
-        $('caseRows').innerHTML = '<tr><td colspan="11" class="muted">Could not load cases.</td></tr>';
-        $('count').textContent = '';
-        showMessage('Could not load cases: ' + err.message, 'error');
-      }
-    }
-
-    function renderTable() {
-      const q = $('filter').value.trim().toLowerCase();
-      const rows = q ? allCases.filter((c) =>
-        [c.caseid, c.cnr, c.casetype, c.status, c.courtname, c.filingdate]
-          .some((v) => String(v ?? '').toLowerCase().includes(q))) : allCases;
-      $('count').textContent = `(${rows.length}${q ? ' of ' + allCases.length : ''})`;
-      if (rows.length === 0) {
-        $('caseRows').innerHTML = '<tr><td colspan="11" class="muted">No cases match the selected filters.</td></tr>';
-        return;
-      }
-      $('caseRows').innerHTML = rows.map((c) => `
-        <tr class="${c.caseid === highlightId ? 'highlight' : ''}">
-          <td><strong>${c.caseid}</strong></td>
-          <td>${escapeHtml(c.cnr) || '<span class="muted">—</span>'}</td>
-          <td>${escapeHtml(c.casetype)}</td>
-          <td>${escapeHtml(c.filingdate)}</td>
-          <td>${escapeHtml(c.registrationdate) || '<span class="muted">—</span>'}</td>
-          <td><span class="status st-${escapeHtml(c.status).replace(' ', '-')}">${escapeHtml(c.status)}</span></td>
-          <td class="num">${Number(c.courtfeedue).toFixed(2)}</td>
-          <td>${escapeHtml(c.returnreason) || '<span class="muted">—</span>'}</td>
-          <td>${c.courtid} – ${escapeHtml(c.courtname)}</td>
-          <td>${c.originalcaseid ?? '<span class="muted">—</span>'}</td>
-          <td>
-            <button class="btn-edit" onclick="startEdit(${c.caseid})">Edit</button>
-            <button class="btn-delete" onclick="deleteCase(${c.caseid})">Delete</button>
-          </td>
-        </tr>`).join('');
-    }
-    $('filter').addEventListener('input', renderTable);
-
-    function readForm() {
-      const body = {};
-      fields.forEach((f) => { body[f] = $(f).disabled ? '' : $(f).value.trim(); });
-      return body;
-    }
-
-    function resetForm() {
-      form.reset();
-      $('courtFeeDue').value = '0';
-      editingId = null;
-      $('formTitle').textContent = 'Add new case';
-      $('formTitle').classList.remove('editing');
-      $('submitBtn').textContent = 'Add case';
-      $('cancelBtn').style.display = 'none';
-      applyStatusRules();
-    }
-
-    function startEdit(id) {
-      const c = allCases.find((x) => x.caseid === id);
-      if (!c) return;
-      editingId = id;
-      $('caseType').value = c.casetype;
-      $('status').value = c.status;
-      $('courtId').value = String(c.courtid);
-      $('filingDate').value = c.filingdate;
-      applyStatusRules();
-      $('cnr').value = c.cnr ?? '';
-      $('registrationDate').value = c.registrationdate ?? '';
-      $('courtFeeDue').value = c.courtfeedue;
-      $('returnReason').value = c.returnreason ?? '';
-      $('originalCaseId').value = c.originalcaseid ?? '';
-      $('formTitle').textContent = `Edit case #${id}`;
-      $('formTitle').classList.add('editing');
-      $('submitBtn').textContent = 'Save changes';
-      $('cancelBtn').style.display = 'inline-block';
-      $('message').className = 'message';
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
-    $('cancelBtn').addEventListener('click', resetForm);
-
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const body = readForm();
-      if (!body.caseType || !body.status || !body.courtId || !body.filingDate) {
-        showMessage('Please fill in Case type, Status, Court and Filing date.', 'error');
-        return;
-      }
-      const url = editingId ? `/api/cases/${editingId}` : '/api/cases';
-      const method = editingId ? 'PUT' : 'POST';
-      try {
-        const res = await fetch(url, {
-          method,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error);
-        highlightId = data.case.caseid;
-        showMessage(data.message, 'success');
-        resetForm();
-        await loadCases();
-      } catch (err) {
-        showMessage(err.message, 'error');
-      }
-    });
-
-    function askConfirm(text) {
-      return new Promise((resolve) => {
-        const modal = $('confirmModal');
-        $('confirmText').textContent = text;
-        modal.classList.remove('hidden');
-        $('confirmNo').focus();
-        const close = (answer) => {
-          modal.classList.add('hidden');
-          $('confirmYes').onclick = $('confirmNo').onclick = modal.onclick = document.onkeydown = null;
-          resolve(answer);
-        };
-        $('confirmYes').onclick = () => close(true);
-        $('confirmNo').onclick = () => close(false);
-        modal.onclick = (e) => { if (e.target === modal) close(false); };
-        document.onkeydown = (e) => { if (e.key === 'Escape') close(false); };
-      });
-    }
-
-    async function deleteCase(id) {
-      const c = allCases.find((x) => x.caseid === id);
-      const what = c ? `${c.casetype} case #${id}${c.cnr ? ' (CNR ' + c.cnr + ')' : ''}` : `case #${id}`;
-      if (!(await askConfirm(`Are you sure you want to delete ${what}? This permanently removes the row from the COURT_CASE table and cannot be undone.`))) return;
-      try {
-        const res = await fetch(`/api/cases/${id}`, { method: 'DELETE' });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error);
-        if (editingId === id) resetForm();
-        showMessage(data.message, 'success');
-        await loadCases();
-      } catch (err) {
-        showMessage(`Could not delete case #${id}: ${err.message}`, 'error');
-      }
-    }
-
-    applyStatusRules();
-    loadCourts().then(loadCases);
-  </script>
+  <script src="js/common.js"></script>
+  <script src="js/cases.js"></script>
+  <script src="js/casefile.js"></script>
+  <script src="js/registry.js"></script>
+  <script src="js/portals.js"></script>
+  <script>start();</script>
 </body>
 </html>
