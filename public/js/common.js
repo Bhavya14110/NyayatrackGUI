@@ -2,8 +2,8 @@ const $ = (id) => document.getElementById(id);
 const dash = '<span class="muted">—</span>';
 const ROLE_ORDER = ['Registry Clerk', 'Court Admin', 'Judge', 'Advocate', 'Litigant', 'System Admin'];
 const ROLE_VIEWS = {
-  'Registry Clerk': ['cases', 'dashboard', 'search', 'details', 'causelist', 'reschedule', 'audit', 'lview', 'reports', 'notifications'],
-  'Court Admin': ['cases', 'dashboard', 'search', 'details', 'causelist', 'reschedule', 'transfer', 'audit', 'lview', 'reports', 'notifications'],
+  'Registry Clerk': ['cases', 'dashboard', 'search', 'details', 'causelist', 'reschedule', 'audit', 'lview', 'aview', 'reports', 'notifications'],
+  'Court Admin': ['cases', 'dashboard', 'search', 'details', 'causelist', 'reschedule', 'transfer', 'audit', 'lview', 'aview', 'reports', 'notifications'],
   'Judge': ['cases', 'dashboard', 'search', 'details', 'causelist', 'audit', 'reports'],
   'Advocate': ['advocate'],
   'Litigant': ['litigant'],

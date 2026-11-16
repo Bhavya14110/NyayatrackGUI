@@ -11,15 +11,17 @@ A web front end for the NyayaTrack court-case database (MC212 DBMS, Group 6), bu
 
 ## Features
 
-- **Cases**: file a new case (always starts as Filed), list with filters and sort, edit within the allowed status moves (CNR, registration date, stage, priority, disposal type, return reason); the case file adds parties, fee payments, hearings, orders, adjournments, documents and judge assignment. Delete is refused by the database (append-only records).
+- **Cases**: file a new case (always starts as Filed), including an appeal of a decided case in a higher court or a case heard with a lead case; list with filters and sort; edit within the allowed status moves (CNR, which must be unique, registration date, stage, priority, disposal type, return reason, lead case). Delete is refused by the database (append-only records).
+- **Case file**: parties (new persons go through the duplicate-person check), fee payments, hearings, orders recorded by the judge at a held hearing (one Final order per case, related orders of the same case), adjournments, documents with "Issue summons / notice" through `fn_issue_process_document`, judge assignment and history. A Final order lets the registry dispose of the case by Judgment, Mediation, Lok Adalat or Withdrawal.
 - **Dashboard**: total, pending and heard-this-month cases; pending cases by type in three age bands; cases by status.
 - **Search**: by CNR, party, advocate, filing dates or old register reference through `fn_search_cases`.
-- **Case details**: header, parties with advocates, judge assignment history, hearings, orders with the order they follow, adjournments with a warning when one party asked more than twice.
+- **Case details**: header, linked cases in both directions (appeal of / appealed in, lead case / heard with this one), parties with advocates, judge assignment history, hearings, orders with the order they follow, adjournments with a warning when one party asked more than twice.
 - **Cause list**: any court and date, urgent and liberty matters first, with a Reschedule button for your own court.
 - **Reschedule**: moves a listed hearing with `sp_reschedule_hearing`, refuses double-bookings, and lists everyone to notify from `v_notification_queue`.
 - **Transfer**: hands a case to another judge with `sp_transfer_case` and a handover note, then shows the assignment history (Court Admin).
 - **Audit trail**: every change to a case from `v_case_timeline`, newest first, as "field: old → new" with who made it.
 - **Litigant view**: what a party sees in the portal, run as `nyaya_litigant` so the database limits it to their own cases.
+- **Advocate view**: an advocate's multi-case dashboard (`v_advocate_my_cases`), run as `nyaya_advocate` so the database limits it to the cases they appear in.
 - **Reports** and **Notifications**: pendency drill-down, disposal types, repeated adjournment grounds, and the notification feed.
 
 ## Run it

@@ -11,6 +11,9 @@ onSignIn = function () {
   $('auInfo').textContent = '';
   $('lvCards').innerHTML = '';
   $('lvTitle').textContent = '';
+  $('avRows').innerHTML = emptyRow(8, 'Choose an advocate.');
+  $('avTitle').textContent = '';
+  $('avInfo').textContent = '';
 };
 
 function barRow(label, value, max) {
@@ -65,13 +68,18 @@ async function loadDetails() {
         <div>Type</div><div>${escapeHtml(h.casetype)}${h.firrefnumber ? ' · ' + escapeHtml(h.firrefnumber) + (h.chargesheetrefnumber ? ' / ' + escapeHtml(h.chargesheetrefnumber) : '') : ''}</div>
         <div>Status and stage</div><div><span class="status st-${escapeHtml(h.status).replace(' ', '-')}">${escapeHtml(h.status)}</span> ${h.stage ? '· ' + escapeHtml(h.stage) : ''}${h.disposaltype ? ' · disposed by ' + escapeHtml(h.disposaltype) : ''}</div>
         <div>Priority</div><div>${priorityHtml(h.priority)}${h.priorityreason ? ' ' + escapeHtml(h.priorityreason) : ''}</div>
-        <div>Court</div><div>${escapeHtml(h.courtname)}</div>
+        <div>Court</div><div>${escapeHtml(h.courtname)} <span class="muted">(${escapeHtml(h.courttype)})</span></div>
         <div>Filed / registered</div><div>${escapeHtml(h.filingdate)} / ${cell(h.registrationdate)}</div>
         <div>Court fee still due</div><div>₹${money(h.courtfeedue)}</div>
-        ${h.originalcaseid || h.leadcaseid || h.legacyregisterref ? `<div>Links</div><div>${[
-          h.originalcaseid ? 'Appeal of case #' + h.originalcaseid : '', h.leadcaseid ? 'Heard with lead case #' + h.leadcaseid : '',
-          h.legacyregisterref ? 'Old register ' + escapeHtml(h.legacyregisterref) : ''].filter(Boolean).join(' · ')}</div>` : ''}
+        ${h.legacyregisterref ? `<div>Old register reference</div><div>${escapeHtml(h.legacyregisterref)}</div>` : ''}
       </div></div>
+      ${d.links.length ? section('Linked cases (FR-15)', ['Relation', 'Case', 'CNR', 'Court', 'Status'], d.links.map((l) => `
+        <tr><td><strong>${{
+          appeal_of: `Appeal of #${l.caseid}`, appealed_in: `Appealed in #${l.caseid}`,
+          lead: `Lead case #${l.caseid}`, heard_with: 'Heard with this one',
+        }[l.relation]}</strong></td><td>#${l.caseid}</td><td>${cell(l.cnr)}</td>
+          <td>${escapeHtml(l.courtname)} <span class="muted">(${escapeHtml(l.courttype)})</span></td>
+          <td><span class="status st-${escapeHtml(l.status).replace(' ', '-')}">${escapeHtml(l.status)}</span></td></tr>`).join(''), 5, '') : ''}
       ${section(`Parties (${d.parties.length})`, ['Name', 'Role', 'Custody status', 'Advocate'], d.parties.map((p) => `
         <tr><td>${escapeHtml(p.name)}</td><td>${escapeHtml(p.partyrole)}</td><td>${cell(p.custodystatus)}</td>
           <td>${p.advocate ? escapeHtml(p.advocate) : '<span class="muted">In person</span>'}</td></tr>`).join(''), 4, 'No parties.')}
@@ -222,6 +230,38 @@ async function loadAudit() {
 }
 $('auForm').addEventListener('submit', (e) => { e.preventDefault(); loadAudit(); });
 VIEW_LOADERS.audit = () => {};
+
+async function loadAdvocatePicker() {
+  try {
+    if (!$('avPerson').options.length) {
+      const advocates = await api('/api/advocates');
+      $('avPerson').innerHTML = optionList(advocates, 'personid',
+        (a) => `#${a.personid} – ${a.name} (${a.barregistrationnumber}, ${a.barstatus})`, '-- select an advocate --');
+    }
+  } catch (err) {
+    showMessage(err.message, 'error');
+  }
+}
+VIEW_LOADERS.aview = loadAdvocatePicker;
+
+$('avForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!$('avPerson').value) return showMessage('Choose an advocate.', 'error');
+  try {
+    const d = await api(`/api/advocate-view?person=${encodeURIComponent($('avPerson').value)}`);
+    const coming = d.cases.filter((c) => c.next_hearing).length;
+    $('avTitle').textContent = `What ${d.advocate.name} (#${d.advocate.personid}, ${d.advocate.barregistrationnumber}) sees`;
+    $('avInfo').textContent = `${d.cases.length} case${d.cases.length === 1 ? '' : 's'} across courts, ${coming} with a coming hearing.`;
+    $('avRows').innerHTML = d.cases.length ? d.cases.map((c) => `
+      <tr><td>${escapeHtml(c.cnr || 'Not registered')}</td><td>${escapeHtml(c.casetype)}</td>
+        <td><span class="status st-${escapeHtml(c.status).replace(' ', '-')}">${escapeHtml(c.status)}</span></td>
+        <td>${cell(c.stage)}</td><td>${priorityHtml(c.priority)}</td><td>${escapeHtml(c.courtname)}</td>
+        <td class="wrap">${cell(c.my_clients)}</td><td>${cell(c.next_hearing)}</td></tr>`).join('')
+      : emptyRow(8, 'This advocate does not represent anyone yet.');
+  } catch (err) {
+    showMessage(err.message, 'error');
+  }
+});
 
 async function loadLitigantPicker() {
   try {

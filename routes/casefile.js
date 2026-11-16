@@ -527,7 +527,7 @@ router.post('/cases/:id/process', async (req, res) => {
       console.log(`[DOCUMENT] fn_issue_process_document(case ${id}, hearing ${hearingId}, ${type}) -> document ${result.rows[0].documentid} ${by(me)}`);
       return result.rows[0].documentid;
     });
-    res.status(201).json({ message: `${type} issued for hearing #${hearingId} (document #${docId}).` });
+    res.status(201).json({ message: `${type} issued for hearing #${hearingId} (document #${docId}).`, documentid: docId });
   } catch (err) {
     sendDbError(res, err, 'DOCUMENT');
   }
@@ -622,11 +622,29 @@ router.post('/cases/:id/transfer', async (req, res) => {
 const CASE_HEADER_SQL = `
   SELECT cc.caseid, cc.cnr, cc.casetype, cc.status, cc.stage, cc.priority, cc.priorityreason, cc.disposaltype,
          cc.filingdate, cc.registrationdate, cc.courtfeedue, cc.legacyregisterref, cc.originalcaseid, cc.leadcaseid,
-         c.courtname, cr.firrefnumber, cr.chargesheetrefnumber
+         c.courtname, c.courttype, cr.firrefnumber, cr.chargesheetrefnumber
     FROM court_case cc
     JOIN court c ON c.courtid = cc.courtid
     LEFT JOIN criminal_case cr ON cr.caseid = cc.caseid
    WHERE cc.caseid = $1`;
+
+const CASE_LINKS_SQL = `
+  SELECT 'appeal_of' AS relation, o.caseid, o.cnr, o.status, c.courtname, c.courttype
+    FROM court_case x JOIN court_case o ON o.caseid = x.originalcaseid JOIN court c ON c.courtid = o.courtid
+   WHERE x.caseid = $1
+  UNION ALL
+  SELECT 'appealed_in', a.caseid, a.cnr, a.status, c.courtname, c.courttype
+    FROM court_case a JOIN court c ON c.courtid = a.courtid
+   WHERE a.originalcaseid = $1
+  UNION ALL
+  SELECT 'lead', l.caseid, l.cnr, l.status, c.courtname, c.courttype
+    FROM court_case x JOIN court_case l ON l.caseid = x.leadcaseid JOIN court c ON c.courtid = l.courtid
+   WHERE x.caseid = $1
+  UNION ALL
+  SELECT 'heard_with', t.caseid, t.cnr, t.status, c.courtname, c.courttype
+    FROM court_case t JOIN court c ON c.courtid = t.courtid
+   WHERE t.leadcaseid = $1
+   ORDER BY 1, 2`;
 
 router.get('/cases/:id/full', async (req, res) => {
   try {
@@ -644,6 +662,7 @@ router.get('/cases/:id/full', async (req, res) => {
       console.log(`[DETAILS] case ${id}: ${result.parties.length} parties, ${result.hearings.length} hearings, ${result.orders.length} orders, ${result.adjournments.length} adjournments ${by(me)}`);
       return result;
     });
+    data.links = (await pool.query(CASE_LINKS_SQL, [data.header.caseid])).rows;
     res.json(data);
   } catch (err) {
     sendDbError(res, err, 'DETAILS');

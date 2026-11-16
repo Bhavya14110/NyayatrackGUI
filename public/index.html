@@ -39,6 +39,7 @@
     <button type="button" data-view="transfer">Transfer</button>
     <button type="button" data-view="audit">Audit trail</button>
     <button type="button" data-view="lview">Litigant view</button>
+    <button type="button" data-view="aview">Advocate view</button>
     <button type="button" data-view="reports">Reports</button>
     <button type="button" data-view="notifications">Notifications</button>
     <button type="button" data-view="advocate">My cases</button>
@@ -383,6 +384,25 @@
         </form>
         <h3 id="lvTitle"></h3>
         <div class="portal-cards" id="lvCards"></div>
+      </section>
+    </div>
+
+    <div class="view hidden" id="view-aview">
+      <section class="card">
+        <h2>Advocate view</h2>
+        <p class="lead">This is the advocate's multi-case dashboard (FR-30). The request runs as the database role <code>nyaya_advocate</code> with <code>nyaya.personid</code> set to the advocate, so the database itself limits it to the cases in which this advocate represents a party (NFR-02).</p>
+        <form class="inline-form no-print" id="avForm" novalidate>
+          <div class="wide"><label for="avPerson">Advocate</label><select id="avPerson"></select></div>
+          <div><button type="submit" class="btn-primary">Show their view</button></div>
+        </form>
+        <h3 id="avTitle"></h3>
+        <p class="note" id="avInfo"></p>
+        <div class="table-wrap" id="avWrap">
+          <table>
+            <thead><tr><th>CNR</th><th>Type</th><th>Status</th><th>Stage</th><th>Priority</th><th>Court</th><th>My clients</th><th>Next hearing</th></tr></thead>
+            <tbody id="avRows"><tr><td colspan="8" class="muted">Choose an advocate.</td></tr></tbody>
+          </table>
+        </div>
       </section>
     </div>
 

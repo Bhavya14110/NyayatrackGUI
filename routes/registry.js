@@ -2,7 +2,7 @@ const express = require('express');
 const pool = require('../db');
 const { CASE_TYPES, isValidDate, toPositiveInt, emptyToNull } = require('../lib/validate');
 const { userError, sendDbError } = require('../lib/errors');
-const { STAFF, COURT_USERS, withSession, signedIn, asNotifier, asLitigant, by } = require('../lib/session');
+const { STAFF, COURT_USERS, withSession, signedIn, asNotifier, asLitigant, asAdvocate, by } = require('../lib/session');
 const { sent, maskPhone, smsText, keyOf, toNotification } = require('../lib/notify');
 
 const router = express.Router();
@@ -236,6 +236,40 @@ router.get('/litigant-view', async (req, res) => {
     res.json({ party, cases });
   } catch (err) {
     sendDbError(res, err, 'LITIGANT');
+  }
+});
+
+router.get('/advocates', async (req, res) => {
+  try {
+    const me = await signedIn(req);
+    if (!STAFF.includes(me.approle)) throw userError('Only registry staff can open the advocate view (FR-27).', 403);
+    const rows = (await pool.query(
+      `SELECT a.personid, p.name, a.barregistrationnumber, a.barstatus
+         FROM advocate a JOIN person p ON p.personid = a.personid
+        ORDER BY p.name, a.personid`)).rows;
+    res.json(rows);
+  } catch (err) {
+    sendDbError(res, err, 'ADVOCATE');
+  }
+});
+
+router.get('/advocate-view', async (req, res) => {
+  const personId = toPositiveInt(req.query.person);
+  if (!personId) return res.status(400).json({ error: 'Choose the advocate whose view you want to see.' });
+
+  try {
+    const me = await signedIn(req);
+    if (!STAFF.includes(me.approle)) throw userError('Only registry staff can open the advocate view (FR-27).', 403);
+    const advocate = (await pool.query(
+      `SELECT a.personid, p.name, a.barregistrationnumber, a.barstatus
+         FROM advocate a JOIN person p ON p.personid = a.personid WHERE a.personid = $1`, [personId])).rows[0];
+    if (!advocate) throw userError(`Person ${personId} is not an advocate.`, 404);
+    const cases = await asAdvocate(personId, async (client) =>
+      (await client.query('SELECT * FROM v_advocate_my_cases ORDER BY next_hearing NULLS LAST')).rows);
+    console.log(`[ADVOCATE] SET LOCAL ROLE nyaya_advocate, nyaya.personid = ${personId} -> result.rowCount = ${cases.length} ${by(me)}`);
+    res.json({ advocate, cases });
+  } catch (err) {
+    sendDbError(res, err, 'ADVOCATE');
   }
 });
 

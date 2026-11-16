@@ -8,6 +8,7 @@ let cfCase = null;
 let cfTab = 'parties';
 let cfHearings = [];
 let cfParties = [];
+let cfNewDocument = null;
 const lookups = {};
 
 const simpleOptions = (list, selected) => list.map((v) => `<option${v === selected ? ' selected' : ''}>${escapeHtml(v)}</option>`).join('');
@@ -180,15 +181,20 @@ const CF_RENDER = {
         <td>${isJudge() ? `<button class="btn-edit" onclick="followOrder(${o.orderid})">Modify by new order</button>` : ''}</td></tr>`).join(''),
       8, 'No orders yet.')
       + '<p class="note">Orders are append-only (FR-25): an order is never edited. To modify, extend or vacate one, pass a new order that follows it, so the link between related orders is kept (FR-26).</p>';
-    if (isJudge()) {
-      html += `<div class="box"><h4>Pass an order</h4><div class="inline-form">
-        <div class="wide"><label for="oHearing">At hearing</label><select id="oHearing">${optionList(hearings, 'hearingid', hearingLabel, '-- select --')}</select></div>
+    const held = hearings.filter((h) => h.outcome !== 'Listed');
+    if (!isJudge()) {
+      html += '<p class="note">Orders are recorded by the judge of this court: sign in as the judge to record one.</p>';
+    } else {
+      html += `<div class="box"><h4>Record order</h4>
+        <p class="note">The database refuses a second Final order in a case, an order dated before its hearing, and a related order from another case (FR-26). A Final order lets the registry dispose of the case (FR-11).</p>
+        <div class="inline-form">
+        <div class="wide"><label for="oHearing">At hearing (held)</label><select id="oHearing">${optionList(held, 'hearingid', hearingLabel, held.length ? '-- select --' : 'No hearing has been held yet')}</select></div>
         <div><label for="oDate">Order date</label><input type="date" id="oDate" value="${todayIso()}"></div>
         <div><label for="oType">Type</label><select id="oType"><option>Interim</option><option>Final</option></select></div>
-        <div><label for="oFollows">Follows order</label><select id="oFollows"><option value="">-- none --</option>${orders.map((o) => `<option value="${o.orderid}">#${o.orderid} ${escapeHtml(o.ordertype)} (${escapeHtml(o.orderdate)})</option>`).join('')}</select></div>
+        <div><label for="oFollows">Related order <span class="hint">(this case)</span></label><select id="oFollows"><option value="">-- none --</option>${orders.map((o) => `<option value="${o.orderid}">#${o.orderid} ${escapeHtml(o.ordertype)} (${escapeHtml(o.orderdate)})</option>`).join('')}</select></div>
         <div class="full"><label for="oText">Order text</label><textarea id="oText" maxlength="300"></textarea></div>
         <div class="full"><label for="oConditions">Conditions <span class="hint">(one per line, optional)</span></label><textarea id="oConditions"></textarea></div>
-        <div><button type="button" class="btn-primary" onclick="passOrder()">Pass order</button></div>
+        <div><button type="button" class="btn-primary" onclick="passOrder()">Record order</button></div>
       </div></div>`;
     }
     $('cfBody').innerHTML = html;
@@ -225,7 +231,7 @@ const CF_RENDER = {
   async documents() {
     const [docs] = await Promise.all([api(`/api/cases/${cid()}/documents`), loadHearingsAndParties()]);
     let html = tableHtml(['#', 'Document', 'Date', 'Stage', 'Submitted / issued by', 'For hearing'], docs.map((d) => `
-      <tr><td>${d.documentid}</td><td>${escapeHtml(d.documenttype)}</td><td>${escapeHtml(d.submissiondate)}</td>
+      <tr class="${d.documentid === cfNewDocument ? 'highlight' : ''}"><td>${d.documentid}</td><td>${escapeHtml(d.documenttype)}</td><td>${escapeHtml(d.submissiondate)}</td>
         <td>${escapeHtml(d.casestage)}</td><td>${escapeHtml(d.submitted_by)}</td><td>${cell(d.hearingdate)}</td></tr>`).join(''),
       6, 'No documents on record.')
       + '<p class="note">A document on record is never edited or removed (FR-25); a corrected version is filed as a new document.</p>';
@@ -399,7 +405,9 @@ async function decideAdjournment(aid) {
 }
 
 async function issueProcess() {
-  await act(post(`/api/cases/${cid()}/process`, { hearingId: val('prHearing'), type: val('prType') }), () => showCfTab('documents'));
+  if (!val('prHearing')) return showMessage('Choose a coming hearing.', 'error');
+  await act(post(`/api/cases/${cid()}/process`, { hearingId: val('prHearing'), type: val('prType') }),
+    (d) => { cfNewDocument = d.documentid; return showCfTab('documents'); });
 }
 
 async function recordDocument() {
